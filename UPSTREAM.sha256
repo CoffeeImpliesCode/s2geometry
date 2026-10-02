@@ -1,0 +1,1167 @@
+# SHA-256 of current source bytes this package compiles, installs, reads as an
+# oracle, or publishes terms for, plus the independent fixture oracles it
+# compares against: s2geometry v0.14.0 (tag v0.14.0, commit
+# c24b368c67d0b8a2a109c5a75224e73a856bd8b7,
+# https://github.com/google/s2geometry.git) and the Abseil LTS 20250814.1 tree
+# vendored whole at vendor/abseil-cpp (commit
+# d38452e1ee03523a208362186fd42248ff2609f6,
+# https://github.com/abseil/abseil-cpp.git).
+# One s2geometry file and seven Abseil files differ from the pinned upstream
+# bytes, each a bounded portability correction, and each record keeps the
+# pristine digest beside the current digest.  Exactly that 1 + 7 set, with no
+# extra and no missing path, was observed by a whole-tree comparison against
+# freshly pinned canonical trees,
+# local://foundation-portability-canonical-source-provenance.json, not a
+# pristine pass.  The earlier zero-difference vendor comparison and the
+# earlier four-file comparison are history and are named as history wherever
+# they are cited.
+#
+# 927 records, in this exact path set, grouped below:
+#
+#    108  A  s2geometry library translation units
+#           the add_library(s2 ...) block of CMakeLists.txt, in upstream's order
+#           and spelling, which is verbatim the list in
+#           build_support/s2_sources.zig.  Nothing else in src/ is compiled.
+#    177  B  s2geometry headers, public and internal
+#           every src/s2/**.h.  Upstream installs only a hand-maintained subset
+#           of these; this package installs the whole tree, so the whole tree is
+#           what a consumer's #include resolves against.
+#    153  C  Abseil library translation units
+#           every absl_cc_library SRCS entry in the vendored tree except the
+#           fourteen TESTONLY/GoogleTest-dependent ones, which is verbatim the
+#           list in build_support/absl_sources.zig.
+#    382  D  Abseil headers and implementation fragments
+#           every vendor/abseil-cpp/absl/**.h and **.inc.  The .inc files are not
+#           optional: Abseil headers #include their implementation fragments by
+#           name (spinlock_linux.inc, stacktrace_x86-inl.inc, symbolize_elf.inc,
+#           spinlock_win32.inc), so a header tree without them cannot compile.
+#     24  E  licence, notice and dependency/build records of both upstreams
+#           s2geometry LICENSE, NOTICE, AUTHORS, CONTRIBUTORS, CONTRIBUTING.md,
+#           README.md, CMakeLists.txt, Config.cmake.in, .clang-format, setup.py,
+#           pyproject.toml; Abseil LICENSE, AUTHORS, README.md,
+#           CONTRIBUTING.md, UPGRADES.md, FAQ.md, CMakeLists.txt, BUILD.bazel,
+#           MODULE.bazel, .clang-format, PrivacyInfo.xcprivacy, create_lts.py,
+#           conanfile.py.  Abseil 20250814.1 ships no NOTICE file; its AUTHORS
+#           names Google Inc. and the Apache-2.0 text in LICENSE is the notice
+#           that travels.  No third-party code is compiled into any of the three
+#           published static archives beyond those two upstreams: there is no
+#           googletest, no Google Benchmark, no OpenSSL, no boringssl and no C
+#           library of our own in libabsl.a, libs2.a or libs2bridge.a, so there
+#           are no further credits to give here.  One qualification, stated here
+#           rather than left to be found: for the wasm32-wasi target the Zig
+#           standard library is compiled into the test, smoke and consumer
+#           EXECUTABLES, not into those archives.  It is built from the pinned
+#           Zig 0.16.0 compiler with the two-hunk fork patch recorded in
+#           build_support/wasi_stdlib.patch, whose MIT terms travel in group J.
+#     17  F  s2geometry build definitions
+#           src/MODULE.bazel, src/BUILD.bazel, src/.bazelrc and the per-directory
+#           src/s2/**/BUILD.bazel files.  They are upstream's definition of the
+#           same source set this package enumerates, so a drift between them and
+#           build_support/s2_sources.zig is a drift this record makes visible.
+#     53  G  Abseil build definitions
+#           every absl/**/CMakeLists.txt, every absl/**/BUILD.bazel and every
+#           file under absl/copts/.  These are the SRCS blocks and the copts
+#           tables this package transcribed; build_support/absl_sources.zig
+#           names the target each entry came from for exactly this reason.
+#      6  H  the upstream oracle files the fixtures were transcribed from
+#           src/s2/s2cell_id_test.cc, s2latlng_test.cc, s2latlng_rect_test.cc,
+#           s2loop_measures_test.cc, s2region_coverer_test.cc and
+#           src/python/s2geometry_test.py.  Every line reference in
+#           testdata/*, tests.zig, smoke.zig and zig/bridge.h resolves into one
+#           of these, so a silent edit to an oracle would move the expected
+#           answer instead of failing.
+#      6  I  this fork's independent fixture oracles
+#           testdata/*.tsv and testdata/*.txt.  NOT upstream's bytes: these are
+#           this fork's transcriptions of answers published by google/s2geometry
+#           and by the independent golang/geo implementation, each row carrying
+#           its source file and line.  They are hashed for the same reason as the
+#           rest of the set: they are the values the tests compare against, so
+#           an edit to one of them would move the oracle rather than break a
+#           build.
+#      1  J  the pinned compiler's own licence text, carried verbatim
+#           build_support/zig-0.16-LICENSE.txt, a byte-for-byte copy of the
+#           LICENSE beside the pinned Zig 0.16.0 compiler
+#           (5c537d6853e005298a285d508cff9ac7192cea23576c840d485b2b586a7ff177),
+#           MIT Expat, "Copyright (c) Zig contributors", 21 lines.  It is here
+#           because build_support/wasi_stdlib.patch modifies two upstream Zig
+#           standard-library sources, and MIT requires the licence text to
+#           travel with the sources it covers.  It is a licence record and
+#           nothing else: it is not compiled, not installed, not read by any
+#           gate, and it is not an upstream of this package.
+#
+# Deliberately absent, each for a stated reason:
+#   zig/bridge.h, zig/bridge.cc, zig/root.zig
+#                     this fork's own C bridge and Zig facade.  They are
+#                     rewritten, not upstream bytes; hashing them would pin a
+#                     mutable file and make an ordinary edit look like a supply
+#                     change.  Their compiled source and the headers they parse
+#                     are all covered above.
+#   tests.zig, smoke.zig, consumer/
+#                     this fork's own behavioural roots, example and standalone
+#                     consumer package.  Mutable, and not an input to the library
+#                     the way the oracles in group I are.
+#   build.zig, build.zig.zon, build_support/
+#                     this fork's own build definition.  The two source lists it
+#                     carries are covered by their contents in groups A and C.
+#                     build_support/ is absent with one exception, stated here
+#                     rather than left to be discovered: the Zig licence copy in
+#                     group J IS recorded, because it is a third-party licence
+#                     text travelling for MIT's sake and not a mutable build
+#                     input of this fork.  Its siblings are absent:
+#                     build_support/wasi_stdlib.patch and
+#                     build_support/wasi_provider.zig are fork-authored and
+#                     mutable, and hashing the patched standard-library tree
+#                     they produce would pin SDK-internal bytes inside a record
+#                     about pinned upstreams.
+#   .github/workflows/verify.yml, .gitignore
+#                     this fork's CI and ignore rules; the inherited upstream
+#                     .github/workflows/build.yml was removed (see FORK-NOTES.md)
+#                     and is not part of any upstream tree this package carries.
+#   UPSTREAM.md, NOTICE.md, CHANGELOG.md, FORK-NOTES.md, README.zig.md
+#                     this fork's own records, listed in NOTICE.md.
+#   UPSTREAM.sha256   a record cannot contain its own digest.
+#   doc/, .clang-tidy, the remaining src/s2/*_test.cc,
+#   src/s2/testing/*, src/python/*.cc
+#                     upstream bytes that this package neither compiles, nor
+#                     installs, nor reads as an oracle.  They travel in the tree
+#                     for provenance and so that upstream's own CMake and Bazel
+#                     builds still work; nothing here reads them.  The six files
+#                     in group H are the exception, and they are listed there.
+#   vendor/abseil-cpp/ci, .github, .gitignore, CMake/
+#                     Abseil's own CI and packaging scaffolding.  Not compiled,
+#                     not installed, not read.
+#   vendor/abseil-cpp/absl/**/*_test.cc, **/*_benchmark.cc, absl/testing/**
+#   vendor/abseil-cpp/absl/time/internal/cctz/testdata/**
+#                     Abseil tests, benchmarks, test helpers and timezone
+#                     fixtures. Retained, not compiled/installed/read by this SDK.
+#
+# Method: raw fs.readFileSync bytes and SHA-256 from node:crypto in Bun eval.
+# The original 926 records were derived on 2026-10-01. The four modified
+# Abseil files were re-derived on 2026-10-02 after their bounded portability
+# patches and prominent change notices; the path set remained 926 records.
+#
+# On 2026-10-02 the delta grew from four Abseil files to eight, one of them in
+# src/, and this record changed with it:
+#   * four records now carry the current digest of an already-listed path,
+#     src/s2/util/math/exactfloat/bignum.cc,
+#     vendor/abseil-cpp/absl/base/internal/low_level_alloc.cc and .h, and
+#     vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_format.cc.
+#     Each keeps its pristine digest in the comment above it.  Those current
+#     digests are the ones recorded by the whole-tree comparison
+#     local://foundation-portability-canonical-source-provenance.json, which
+#     hashed the file bytes on both sides of the comparison; they were not
+#     re-derived by a second method here, and no claim is made that they were.
+#   * one record was ADDED, build_support/zig-0.16-LICENSE.txt in group J, so
+#     the path set is 927 records and not 926.  See that group for why a
+#     licence text in build_support/ is recorded while the rest of that
+#     directory is not.
+# Every other record is byte-for-byte unchanged from the 926-record set: no
+# other path was added, removed or re-derived, and every previously recorded
+# pristine digest is still present beside its current one.
+#
+# A full `sha256sum -c UPSTREAM.sha256` replay over all 927 records has not
+# been run against this revision, so no result is claimed for it; that gate is
+# the parent's.  Current source/fetched replay status lives outside this
+# package:
+# FORKS.json.cross_test_wave.materialized_packages.s2geometry and
+# local://foundation-cross-test-package-regression.json.
+#
+# What this record establishes: if it validates, the bytes a build compiles, the
+# headers it installs and translates, the licences a redistributor must
+# reproduce, the build definitions this package enumerated its sources from and
+# the oracle bytes the tests compare against are the bytes pinned here, and any
+# later edit to one of them fails the check loudly.
+#
+# What it does not establish: it is not a signature, not a Git object id, and
+# not a re-derivation from either commit.  It is a hash of this working tree.
+# That this tree differs from commit c24b368c67d0b8a2a109c5a75224e73a856bd8b7
+# in exactly one disclosed path, and that the vendored Abseil differs from
+# d38452e1ee03523a208362186fd42248ff2609f6 in exactly seven, rests on the
+# import, on the two `git archive` digests recorded in UPSTREAM.md, and on the
+# CI step that extracts both canonical archives at those digests and compares
+# the whole trees path by path against the eight pairs of digests carried
+# here.  There is deliberately no `git diff --exit-code <commit> -- src` step in
+# CI: a zero-diff check cannot express "exactly these paths", so it would
+# either pass only while nothing at all is modified, or fail on the very file a
+# disclosed fix is about.  The Abseil revision rests on the tag/commit pair, on
+# the CI check that reads `lts_20250814` out of
+# vendor/abseil-cpp/absl/base/options.h, and on this file: the driver's
+# source-archive set
+# (local://foundation-expansion-source-archives.json) records a `git archive`
+# digest for the eight top-level projects and has no entry for the nested Abseil
+# dependency, so no such digest is claimed here.
+#
+# Verify with:  sha256sum -c UPSTREAM.sha256
+# Current source/fetched replay status is driver-owned under the package closure.
+
+# A. s2geometry library translation units this package compiles (108, upstream order)
+806df82673c85447f56e572526ee6cdfb48e5c90c6799afedf9ca9172ae58b5d  src/s2/base/malloc_extension.cc
+913463c983ad1a3e4593fb36ac0a2121993221fb93bd4828d1d2fda7ad0c1963  src/s2/encoded_s2cell_id_vector.cc
+3f96fb6384efe29a900e69a2959a6b38fb3b91e0388118f7d2725a3c96b7d80a  src/s2/encoded_s2point_vector.cc
+2e724e79d775245fb9f1da8ccbfbba6c6ad149c241547c241c8a9f87254c7204  src/s2/encoded_s2shape_index.cc
+c93bc8ce49a77878fba3b20f47b2e4ee46386ed9ab110679e18b30912c9e457f  src/s2/encoded_string_vector.cc
+ca563c71eb251f23ef4da8b5bb4450fb27e2f0013f7bf2951118ff3ad1417894  src/s2/id_set_lexicon.cc
+15a68d21663a0e35fe146910926b1847845e0da59194cc0bab8c2f62a5eb4804  src/s2/internal/s2incident_edge_tracker.cc
+89fa30a2065aaee00ef9e859463748a0711077a91efca37aa6306484a521d8b0  src/s2/internal/s2index_cell_data.cc
+0f4b8eb81f30add550ee73c7c20eb11841206aa0e2522f1b6ebd6ae1445b3477  src/s2/mutable_s2shape_index.cc
+fdd112d3b04193de059702622d70e1374ff0855bf1545dd1cb84802c0fd5ad0d  src/s2/r2rect.cc
+e2825e17448189b5cf9764d3405beaecaabfdb45e417596301ad8912c61b52e6  src/s2/s1angle.cc
+916728ed3e4941f86054588ca793e225a250687441cdf82a4ec677b84569b1ff  src/s2/s1chord_angle.cc
+b055bf4d71c291ff5531f4831d06509657473d05612d4bd7f65bd25ca47766d4  src/s2/s1interval.cc
+60230f2cde985d5943f52f11a7f87f19128a53ad978be4f8744fa911b852d8ad  src/s2/s2boolean_operation.cc
+faa66550a2ba2d6ae3d5a2b935da323e8908bbbbd211b73962973090ee940fbf  src/s2/s2buffer_operation.cc
+de47d912d7b01d8a5646daa8a5d0f2b55d37dbfd086921949bca7c3cc7960717  src/s2/s2builder.cc
+8ec835b63708f65a35a7acebe4c5692fd8c0a7783fdeade2c29f61091d5b3599  src/s2/s2builder_graph.cc
+24ceeb4806f015af9c3d905703ab62bbdc0f99984e5a02290e5a14dd682bafc2  src/s2/s2builderutil_closed_set_normalizer.cc
+3db9ccfb5d109e8d5ce27bc6a563d12635169cb92f0fa9275466f05a6bdc7508  src/s2/s2builderutil_find_polygon_degeneracies.cc
+7cd8d84d7f6b3e157cac38d5865c1646281b3ee1227551f758a9332a702f7556  src/s2/s2builderutil_get_snapped_winding_delta.cc
+410def00e6e18fd5078a8bf5fcd4dc5c1a0714f12e28030dfa7c171305243aba  src/s2/s2builderutil_lax_polygon_layer.cc
+f7f6b66f1d3d209531dcf0c3b638509348cf937475ddd0fbb89e823900c217cc  src/s2/s2builderutil_lax_polyline_layer.cc
+e57be0adf05d9c2fd32be6b3ff5c9ca5c53c41aa3ecaf05161670960f0deeab8  src/s2/s2builderutil_s2point_vector_layer.cc
+a02808fdc2fb88baf192993b1b8350ec62f8ce3284bb3dadab26211ccb5668ba  src/s2/s2builderutil_s2polygon_layer.cc
+73d7259323151db0e81dda03dd556a2dedb02174cfbed3418d901f21521a66db  src/s2/s2builderutil_s2polyline_layer.cc
+1115fbd7d8d56edbd76c1d0905a545f4816ccaf84135a78dba629ae815604c97  src/s2/s2builderutil_s2polyline_vector_layer.cc
+3a841f83d29fd879ac2bd473ad332cacae4666845367deca8fbc0efd66c350f4  src/s2/s2builderutil_snap_functions.cc
+69aa8d2d996bc0d1b5bee011c0c1e19a34fc189e06a741925cb05f58e8fc59f7  src/s2/s2cap.cc
+560f5d1d72c8080774f7cd00a17def01cdf1dee689101209a57c9e1380a6e417  src/s2/s2cell.cc
+7b569edce585a548fa22480f9dea425f05deef6bfc3c7c8e496863b5853ca8ca  src/s2/s2cell_id.cc
+7c1367a5f39a4f0103f9089aeca24b395784491e78f70ccf525f52a3b69dd727  src/s2/s2cell_index.cc
+b5009e1d9fd7d72171f28a0e01b10a170e644217bd2af9033e986363509ae59a  src/s2/s2cell_union.cc
+55b36d75ae31d9d3c4500bf93e2e801f1479d308f6b626fea033fd45dd23a6a3  src/s2/s2centroids.cc
+33ef1a03c4def634a91961e679784a7b5016dc8f6ea5d4d88e248d6200c8102a  src/s2/s2chain_interpolation_query.cc
+5ee7d86f91f0f76390622dda00bcf7cec94bda56a155781625ef90897d185f3f  src/s2/s2closest_cell_query.cc
+80b6c52b5cebe56d79891bd4b810ef1d1f91d0c51197a46fc06929acca2f5604  src/s2/s2closest_edge_query.cc
+822609d8a1dbc45df88a0702b0c6c593a23da98e9cd58cd70e4deeb511836f3a  src/s2/s2closest_point_query.cc
+e7259e2901992f4003dd14dd6989926785e2d0e52f4d8feb91be8a6741a6bc08  src/s2/s2contains_vertex_query.cc
+671883962bfdbceea0324017a6583bb8dab54ba2e3b8a241d6b0f79d540a68ab  src/s2/s2convex_hull_query.cc
+49ffc1a868568ea1d7b7c8a101d5f052a5dac003ead1aca05f3eadd83ae02662  src/s2/s2coords.cc
+15103815c5e0947b1b84cf41f087496f728d9c6a4c5fd4fbb7ea58b7c782a0ad  src/s2/s2crossing_edge_query.cc
+17191d6d367385ed596f4b4bc3c46424942b312f0a0f1ef3fcb77e2bceebeaf8  src/s2/s2debug.cc
+69793e4a0361407abd10350229d0813dc584dbde44ced4a2a8996e8a16e568e3  src/s2/s2density_tree.cc
+c8009947d5841b522679dd7da0fdbc670fadea7a838da2af3a4bb9f1e0ef3b26  src/s2/s2earth.cc
+ce8bd777ce9f5c6fd937e8337b0f6ac577f551c5167d5b5e9956bd7176a4c4fb  src/s2/s2edge_clipping.cc
+26e7e61676b81cd0e1583ed65c5721a5e1b26c470b2447910eb0b12b216a9847  src/s2/s2edge_crosser.cc
+6bdae6eeb6380959a3e6e9de214bb787402e2b40c00ceccf500f5c3693c167c9  src/s2/s2edge_crossings.cc
+0775a9baf42c6d508cbc18280ceb841d79d223eb32f1c0f8f8af3cad7568e9ec  src/s2/s2edge_distances.cc
+bf1f03ed289551e79936410117bf6bcf3f4aaced60c2cdcecd37ddcd8939d0f8  src/s2/s2edge_tessellator.cc
+a6d55969e5892871f07c8772732dc8627ee3b6ac3f5a75c3e23e0ed3093c6665  src/s2/s2error.cc
+ebeb77d9ff5e84dbadee3580ee33d8ebefa67661360c9b46c20dc074c195e766  src/s2/s2fractal.cc
+01ad41a18c0fb884a7d02d99f6fee1afca6c93efb8a34ebdf5f89245b48f10bf  src/s2/s2furthest_edge_query.cc
+a65856a7ab94cdd3ec82f03e7fbb853dbaef85a34b0b9edd343dfa304a0d6b6e  src/s2/s2hausdorff_distance_query.cc
+1d1a0111f2ae1506b8364e68c16505c340768eca369a7681c8180fea3e895516  src/s2/s2latlng.cc
+439aa78de853421c312729da0848a97a9f1ab74389ad7145d53bbca16ae88c3a  src/s2/s2latlng_rect.cc
+a2773c1f7ab8fb493a559358f2cd8d1cc912e834410ee3e2d73e2d181687e4df  src/s2/s2latlng_rect_bounder.cc
+b271e2069c5f810eb961c3b2633448ea2151e20f28ffdf57b59d21f20f03167c  src/s2/s2lax_loop_shape.cc
+2d3ca0b57f3f3a104db06d46f3a54a0fee340e6199e3eadb3325945ade03c437  src/s2/s2lax_polygon_shape.cc
+0984e6039b584355eaa3f7918fa750fcd6ee05dc91dac2d263d5e07e7280a7c8  src/s2/s2lax_polyline_shape.cc
+e621d220787f4fa7d99252bae989ee694e5411958bf22402a9e781406748b71f  src/s2/s2loop.cc
+ac5f310739c46f3dacb505501d5cb2b9b961770aa1c28b56c7588967cc961ace  src/s2/s2loop_measures.cc
+a955ec4e68984a0b1f79cab8f7b12105b575a8875c35a70e7956ee0a78f893d6  src/s2/s2max_distance_targets.cc
+cfc2ae9680c03e4795e491bd4fc4bdc25e4f8a062d2a6e646651df3ef02d22b0  src/s2/s2measures.cc
+d7e166bf56e9ffa264ac1bbfec294b5f36b736a9da419a8894c2a83c1f08ea97  src/s2/s2memory_tracker.cc
+74da72e9af9a7e93506f8e1b2d39f480097543e60849b1ea054a8da45a6b56f2  src/s2/s2metrics.cc
+dd2631d650529531d519e7b051943c998107bdc3a700a71bfdac0b81b79c8560  src/s2/s2min_distance_targets.cc
+72462275c59bdd426e3763f34f9072654af71151d5a778bebcbc5c14876e096f  src/s2/s2padded_cell.cc
+978cab67d3b636f865846afddaa7ee0fc0adf8b02235b28d038e24b59a6d8c23  src/s2/s2point_compression.cc
+ea13214fbfbf51cac6a1f7bc9a76a6b5e6ec79389d98fa68b26fa6bab88cafa2  src/s2/s2point_region.cc
+4ebc9e69162e298bedc470a47784e36ad821e27af89f81dd47ad44ec91926be2  src/s2/s2pointutil.cc
+595b7a9c080694d647ae48966439f3dc91788b009e70d9885a14c560f6be9d06  src/s2/s2polygon.cc
+54805b9ce68aad4bad87836340efc0dca64d226f278185e92cd51299552311bd  src/s2/s2polyline.cc
+f67e617a13ec575784ab5c2a99c883e1cd8ef3bdfb8c90542a162bb1c95209e7  src/s2/s2polyline_alignment.cc
+b4d3670fd2750ea8dc6dc4a42f190f7e480a78b547ba720156633bb94cc17f32  src/s2/s2polyline_measures.cc
+afe497cbd62588e1d4c1da6df90b33a5231534de2c112525eec257a6d5476e87  src/s2/s2polyline_simplifier.cc
+4e18d0c8d3292160a39f971a2055dca29fee1836b393632aad42237cfcef096b  src/s2/s2predicates.cc
+8600ec06c1cb3f098ee5dfa445f006210fd9f359ad513544f9011a4eefebc871  src/s2/s2projections.cc
+1a561b3cae275ff0f7303dcc9215198f4e9d4b2eaa720072971b140970b9d7ad  src/s2/s2r2rect.cc
+e008d8452a3938e646418342c821eacb5a6bc19f7636646f9ef932e0a7211ad4  src/s2/s2random.cc
+bbad1ea94c6939384e2e6d456dd829e62e9a73b06708c1163e8a2a781d056aab  src/s2/s2region_coverer.cc
+58d6b202a0eb673bc974c6d9476624a23f1443e3afabf50afe0744ed894bf31e  src/s2/s2region_intersection.cc
+0fda85afe6eef76ceb7f08139dc76a69a32092accc564fa42aad6fa3ccf196cf  src/s2/s2region_sharder.cc
+73f237bf1661a3aa80e857002968a14b74e9d425d82d55b33b19913c9ec420fd  src/s2/s2region_term_indexer.cc
+69879edf7f16c4aa8b9220190af57c52380b002840d21692e448404f2efdddb0  src/s2/s2region_union.cc
+697c2d366a297c40c8e7b89e20ed9f15f19622cd824153265a859dbcc80b7532  src/s2/s2shape_index.cc
+a8d9152f5eafdecf0f7d99f7e02abfd442f890d7c1dafb7c761f4eb0c697d995  src/s2/s2shape_index_buffered_region.cc
+e69e2ef5f110087b4b904b38f9065cda5d1a917ddab700b1248f5bb111568770  src/s2/s2shape_index_measures.cc
+7031bee2211c6dd532a1bcb7100b1121bda8c4f3e28f57417993de763257df3a  src/s2/s2shape_measures.cc
+36a0d9cba0205a81bd081b1894367732886595c7bda5390341fbe1d16cad2791  src/s2/s2shape_nesting_query.cc
+adf00a6dacbb5ba1c453685c2f3260ee384fde6d0acf54f1e05af7962c7595e5  src/s2/s2shapeutil_build_polygon_boundaries.cc
+b44a8eeabacdec30fb49be0adbb050537ed19d77c575d2003abcf9e77c6419aa  src/s2/s2shapeutil_coding.cc
+c7821a340a2740764f56906043f9cdd9c1a7bd6d58831e7b9e783716e5085a29  src/s2/s2shapeutil_contains_brute_force.cc
+d8264866569dfa27027cd4a87b1a2f77d94d651e0d9ab9408b10c49ca8990add  src/s2/s2shapeutil_conversion.cc
+8a313624e0fd890c3778ae4965249837ce19a5f1dbd2dde91ed53e124211a948  src/s2/s2shapeutil_count_vertices.cc
+7731a65b4c50c11082053fa929c3b58f14be678c2a648166fb4f4d4637057f1d  src/s2/s2shapeutil_edge_iterator.cc
+dcf56ddba80969afb6b57d2f44590a4e5e6e1fde3b2d07e1920beda975e15a5d  src/s2/s2shapeutil_edge_wrap.cc
+0677a3939421dd91c8c5ff61c9e8daa5e79f47193ad04e4be946c4630d5aa96a  src/s2/s2shapeutil_get_reference_point.cc
+c8a79cbf71d5b62ddbca68594729459e9278aa2fbb7fc7b70ff380274cfa955d  src/s2/s2shapeutil_visit_crossing_edge_pairs.cc
+99cec40eb7d97fc5ce5015115d6130e271778aad814d68eb2d618f04841d3461  src/s2/s2text_format.cc
+6007107f4c4372ed88dc288f49db8e15418bee5e1c5edcf4ed94e10aec63947f  src/s2/s2wedge_relations.cc
+7548438187946721a8067f1a51e0c6d4562c3f424833d5528339fa45635b0f16  src/s2/s2winding_operation.cc
+c1557a42396fed6ae5de29188ac7925282472fc0b9220cf3449c49ca31d8ef20  src/s2/util/bits/bit-interleave.cc
+62604eb82eb900ec6a43bdba16462d2760a04ab7751c175ef8885cb43069f9b1  src/s2/util/coding/coder.cc
+8a7a0f536ca79ff74cd1ce87792bf6e1d40d00d37b6c8ee0ec920b0dac2c395b  src/s2/util/coding/varint.cc
+# Upstream c24b368c baseline: e00b9e178322bba37a8f3352937c94b9c3a295ee87c5eeecf3e4fa553f17d6f3.
+# Bounded pointer-iterator portability deviation: std::from_chars takes the
+# string view's character pointers, not s.cbegin()/s.cend() iterators.
+89a2379f0aa5c3c1ac20a6c98b18718bf637d825d249da2befa5091943fdad16  src/s2/util/math/exactfloat/bignum.cc
+eb34308bb4b6392ff7407fde72e65f37311d3bfec291268a0e9fc736f9f1bc63  src/s2/util/math/exactfloat/exactfloat.cc
+0a41b43bf20df09fed12870f76896f907449e43f30841dffe27914ced6b3bdda  src/s2/util/math/mathutil.cc
+536278b818e29f48b6bc5d5c185937112bfcdea9c0403407c0c75a875d88e407  src/s2/util/units/length-units.cc
+
+# B. s2geometry headers, public and internal (src/s2/**.h)
+f84d708505d79cece4239b485e4ba4a4b1b6645278e6eb5e1253d6013308b577  src/s2/_fp_contract_off.h
+a3c284584cb16a63b9e6d638ea6d3e445464e0b7612fdd90c8bea057792ac2ff  src/s2/base/casts.h
+dd8e92a6a5bfb7bc8d2e3cda471e530633bc7519ef86f10c68ca52bc04c42221  src/s2/base/log_severity.h
+474036b74f06b8c075a0df725525f925c952a775b54f0ab0be50161985e9f8f1  src/s2/base/malloc_extension.h
+24a901dc12f87da56b402f5c149572ee2dcef28b00e36dd3d8e2b27164afd4c8  src/s2/base/spinlock.h
+32f5db40c4ee8b4f9a4055cde8ccea2cef8ad4afb8cca657c58df94fa64f5768  src/s2/base/timer.h
+6852605e455001f3c5513021ca0e4cc839aa9daa0b89c6dd17f2cae2055aeeed  src/s2/encoded_s2cell_id_vector.h
+1cbb9177f8065610c500dcaa16832832b697a6211bf5841e7f1ef44bfe3af146  src/s2/encoded_s2point_vector.h
+c8699708768b5c456fc5a2dd113874734d7f698185e95a21684d3ee5643319c1  src/s2/encoded_s2shape_index.h
+7cfefb781ea036448e64c61f39bc6a744705018e54814ed61ad47336018da0d2  src/s2/encoded_string_vector.h
+dd70ff1834c74ab9a562d8a591fd6819fa141b02e02bc61cd91f9d406b057f0b  src/s2/encoded_uint_vector.h
+8a4c9d233f5c4cdd54bc7324c3b11649b08aac787926545fd51fd3e960388a4a  src/s2/gmock_matchers.h
+fa24e151802810dda7d5cc315bedd9c693dad0ad6bafcad09434c05d294076e9  src/s2/id_set_lexicon.h
+6bed672919ddcdfffbdb93fd23b2d9437a7208e63460b64660eb6376ed77464a  src/s2/internal/s2disjoint_set.h
+be370b85bbf8ad68a2d8675095b0ae55abf9efd53fdbbec82318d396f1712f1a  src/s2/internal/s2incident_edge_tracker.h
+7764a6e02d52a3b77c7111cdfff759e0f75f934909c704d3e2074fc9ad1fd4f9  src/s2/internal/s2index_cell_data.h
+2876d2ae83a97337010b1c656842cbf366f03bec413a7b9fa144661343ac64e6  src/s2/internal/s2meta.h
+547d2b18d72ce778b953263fdccec3542dfbdcd3c652112971613b4ab8958b65  src/s2/mutable_s2shape_index.h
+336b1b7ee7a3ed2d9ae1cbe259db9c7c7cfdf4aa5c2a09995e76d953cd32ffca  src/s2/r1interval.h
+a58d42beaf31256be20ec84e1c7cf225cc903cf4653a4da67a2f3bbea7537df2  src/s2/r2.h
+609f67f544bb29c8dd8230632c8592937545121168495c8ed41a3e0c661d806c  src/s2/r2rect.h
+14416936ad383752e28d46826765b28dfd670b7454800c644b65eba477aed451  src/s2/s1angle.h
+4b5682549614a24917f16529a8e629bdf4619ad89099e939179df0885d421ed9  src/s2/s1chord_angle.h
+4c69319b1b53f3d9b2ebb46faf3c41e97bcccb1a616136c75cd79bd80179dae3  src/s2/s1interval.h
+05c00ac55f9f9723030ca394b3e818d904ec83c800fd00743e5fb518877c30c3  src/s2/s2boolean_operation.h
+af9e62ed0584848153528a1f2db837627c892375232e6b63fbb904233b7082d4  src/s2/s2buffer_operation.h
+e6b7808f717f8aea3659b763659dd8b3722b6743250d30b006eabddf7e7a3a82  src/s2/s2builder.h
+48035de5b396620afb9c7c8718e1c2537674be6ca116014a2a878080aa694500  src/s2/s2builder_graph.h
+76dc147bfe2f8f51c316ce86b1a4e5955020b0e355cbd5c046e1a2fd02cf42e7  src/s2/s2builder_layer.h
+0fcbb26c1ebe47cb2f31a58aa4cb7aa433d03916bdffb3515e18bef6e817cd85  src/s2/s2builderutil_closed_set_normalizer.h
+fbdb03ebb14d4e3b0953ce1e3d1acb9ddff940b1da87c191e703d338fa6cf522  src/s2/s2builderutil_find_polygon_degeneracies.h
+93db65d2debfa1e12688cf2134f021ffc73ae87247dfdaea64500bf533f943b6  src/s2/s2builderutil_get_snapped_winding_delta.h
+7175264fcf31d04c024a20820dd056977961e1ece44d5e7e64a5ebb72c8a880e  src/s2/s2builderutil_graph_shape.h
+60058659aef2dc9d79d1c6172b21abec92311d9761e342de434614cad4380108  src/s2/s2builderutil_lax_polygon_layer.h
+701837f876866ab338bb6cabde0b13622e20c8d3a8dbef6dc932f6346ce36cb7  src/s2/s2builderutil_lax_polyline_layer.h
+c86763f84ce03f883916270d3513d4c2dea366b7987c939702bf3afaf596e0cf  src/s2/s2builderutil_s2point_vector_layer.h
+41fcb55d333ccbc51e95d38678fdebfd88579880f5349afa0074eba2dc8a496a  src/s2/s2builderutil_s2polygon_layer.h
+a4c80495a67fe811f246d28ac051aa63430c494fcc7f75cd12bfd135f1d2df1e  src/s2/s2builderutil_s2polyline_layer.h
+f6eace6a8353e6d95643eedd5fbcc9fb36129ee7dbb99d39d75e60af8ca273f9  src/s2/s2builderutil_s2polyline_vector_layer.h
+9456548943fd7d0304d638a5aa1d36b227022b34b46f417b910db0920108d878  src/s2/s2builderutil_snap_functions.h
+01e67b8a7961708a0c972f024a13b5f58b45d294acfed1b4171c0face63e8db1  src/s2/s2builderutil_testing.h
+dad7d7be61c1f8ff79446e76e34eb9a219e78eb23dce31226622b76cd3a85d61  src/s2/s2cap.h
+a0fe10998712f7a487c86213f379422c259e73b5a8d028552c05836d72451154  src/s2/s2cell.h
+135e76cbfb41862d788230c0f906fbab3f02703b7ab060fab6f029c57a252d31  src/s2/s2cell_id.h
+9b6163f36c7061818ac30e198af78ed22bb7b0710e1d47d511a90befd038a3b9  src/s2/s2cell_index.h
+9cd7b7e880238a60381bdf852f28df7257b3524871c3d3565d02aebfeec33c79  src/s2/s2cell_iterator.h
+19d1b7edb3b6f400de8a007cad54a23298f990ccff1b8d77f13c8a1898a7181b  src/s2/s2cell_iterator_join.h
+4d591b0734101c6245864af54f6d5f803931276856d6e754e1eedad7ab3a2546  src/s2/s2cell_iterator_testing.h
+70c4650470d8774eb1ba0e300726837b1a3034769e2a10a4aefae877f3f70ba7  src/s2/s2cell_range_iterator.h
+28516eafde7f579bf2c7025f53a325e95a820e9d0778e55775d92e909420f6d2  src/s2/s2cell_union.h
+1fd5028db54aa50afb94b17ad86669744c1b74732282edf61b396b9f3abb73f6  src/s2/s2centroids.h
+ced3ea9ee337875780611cf153e3603f77269cb45ae8410cc0c6352db0ebef71  src/s2/s2chain_interpolation_query.h
+d9efff0890b78f94a324beba27d1408902954d7c137ce1c8da1b75dea50ca10a  src/s2/s2closest_cell_query.h
+1195dfa0cbdac581967cd85890536bf6dc51e8f963c50138c5901a3ad920f757  src/s2/s2closest_cell_query_base.h
+39c51841cf785096ccbd545fc34c8b8f6a61f9b30bae9a14a467e1a84b3a7341  src/s2/s2closest_edge_query.h
+7e33cd867e2bd3e1ddaea5ad7f099c15fe63b6ab83f028d59b8f700db1fb6ba2  src/s2/s2closest_edge_query_base.h
+67fab99e93b2f079d5b41b3b5afe86ed9f446e6b00c1c5d60451387d7e147563  src/s2/s2closest_edge_query_testing.h
+1f2f76f8114d604916168c00a9bf42e944ec7481bf9753aa1d089d97826ee7b8  src/s2/s2closest_point_query.h
+37057348439b401f6d071aa6d36027389995e87b7e36d548775f9189d8881e4a  src/s2/s2closest_point_query_base.h
+a7d0272b29100442929f52da12551031364c462ca3252fc0ab46ff2e9518ab5f  src/s2/s2coder.h
+bb478d863ae93d577527af5d47d910745e3725f1259cea65fa20993a60f70c4c  src/s2/s2coder_testing.h
+9630a11d13c4447c4502e31694e6a1c97a1dadc89da55f1b0e096b6964d0a07a  src/s2/s2contains_point_query.h
+a34c46ed355c9dc8829f9774263890ca08a3c4dbaf61bdc0d396d612609c0cbc  src/s2/s2contains_vertex_query.h
+afaf7da74e17f7df3d28ff8f741c80a76653edd94cc58af24f8e7ea2c140cdb9  src/s2/s2convex_hull_query.h
+ae003e685fa98a2c6a16978107053b3aa29458deb8d8dd120a9f0550e58f6277  src/s2/s2coords.h
+7a8726cbd45c57f75f3462d6db426da9840ffc90e63729e6f66d649f27ceb2e8  src/s2/s2coords_internal.h
+740657f3e4d9745f6cff891e5dc7750d11cc81e29db70b0e2fb76226c204b663  src/s2/s2crossing_edge_query.h
+b97d27395bea3abcfca9d7ce782e5f8b5149a00a793c3dec9e2d6200b1f8d324  src/s2/s2debug.h
+72660a7a213175f63e6471bae584d86aa6f216e3810da4ae831a585264daf701  src/s2/s2density_tree.h
+8529b762407af65c59556801e291d467e7b67484e5e71ebf7fc22ed1da16380d  src/s2/s2density_tree_internal.h
+94240dac634074da9618d62fac237eb0cd12a67a929cc71fe7d90691fd767368  src/s2/s2distance_target.h
+9dc3d5859807a0f4225a107e86afaf7b3db114fa9b167c2855dea11aa4ca9f6b  src/s2/s2earth.h
+3936b424438486d92a7d605e100fff548ab009790556016a7b08702f14cc6857  src/s2/s2edge_clipping.h
+6a61762db27205414f60d8a24323d32b243452c76686b798126a92b9ee49f6c0  src/s2/s2edge_crosser.h
+3d8ace142baaaabe7bb473824724a9c2b11fd4bdaa32288e521dcc57c85d5592  src/s2/s2edge_crossings.h
+86edd7d0af4ba5db2f83e6cef94705e0a8f300dc57b3ceb08b7860cdcbe14019  src/s2/s2edge_crossings_internal.h
+2a72d9cadc46466aaf2f6a34a0688457d29c914dcc19f2a45360e9ba292118cf  src/s2/s2edge_distances.h
+0672dcaf788f74ff8e1f210bb21c273f6fd8a8f6d49a1bd8784bd3df069e11b8  src/s2/s2edge_tessellator.h
+a0b5a329aff06dcf6985ed77b5ad3cf641b7266666f045ab47656c0429554668  src/s2/s2edge_vector_shape.h
+d1fc819ce61bf5c832a690337aad45f55a04b185cf2f6c62bdd1339d5a4ec88d  src/s2/s2error.h
+c7f769fb2452d85ba6bda2c803e498a69f08b852932fb9ca6b0cc7aa31305851  src/s2/s2fractal.h
+bd32849598e2a48003d5350f8218a73e534417fd44312a6ad61ead4b75cd0f77  src/s2/s2furthest_edge_query.h
+a3a6d8cfb9632f10b0b6249b02c8730bf741f1a338a710e3da7dfaa92821ffc5  src/s2/s2hausdorff_distance_query.h
+6e4eee0ae41d682fd44b43771b358a9489f9d91827546bc4dfdcac7c3cb4431e  src/s2/s2latlng.h
+b4ea977b2093f47ff39738a5b61ae5791b76ab3f2ef5b4b3150101a5f0072c9a  src/s2/s2latlng_rect.h
+85d1399859be5f35bbd56685e6c6708793c44f8fbed5600a846f7a3452bc0d26  src/s2/s2latlng_rect_bounder.h
+bdbc606476a2e891083b4fba747fa61a6340aa47195af7390f4797b47e26aa07  src/s2/s2lax_loop_shape.h
+5e270783273a547315f8c14e8420ba32a63cde6e65580724f1169b717ac2ebe4  src/s2/s2lax_polygon_shape.h
+efbc09c5ca9bf0b01da3e77e3908e7f982d04275c594a068d699b0b1741607a5  src/s2/s2lax_polyline_shape.h
+5a7a0022b9dc1616319af86a119e6b0ba86c54188b523a3ef234c873e76f9098  src/s2/s2loop.h
+6a56142b45995e12b0634f1393f96ca9c3f05c78f542222147d3e6dd2458141d  src/s2/s2loop_measures.h
+c8fb04e48972c5b387a61a50f599d9edcb7ae730a86ec502c4f7f5c62c223444  src/s2/s2max_distance_targets.h
+e8c88ba852aa4bb8c5e4a4c0ce47ff1fdca88f12387cb5f6b2701bdc7ca5c7ba  src/s2/s2measures.h
+87b3b7e4a6649df23c25150b3b74a857826024ab867a0b4f07baf27cea9ecfe2  src/s2/s2memory_tracker.h
+250f985b9f0b42d5852dfa7ec5ca5089341fa687fdf524983613334e21118611  src/s2/s2metrics.h
+2d3e8510d9899d583862c2a199f0f8cf37f4333021f9d117ccd873ed469fc059  src/s2/s2min_distance_targets.h
+cca2af9f317606d73c8c58d72684e716cea26c80d8835f123c28965b89fa33d2  src/s2/s2padded_cell.h
+6b2fbe877f550c28b070012cb05a2c43c2e6962295cea6f4e52366d20014ad6f  src/s2/s2point.h
+604e81b0f20263a313e34f83bb7bca0402526d0549a04d367c30f92acf12168e  src/s2/s2point_array.h
+16ca9cd1b29f82cced77c211229061020a4fe962c5458561b77037e99fff8468  src/s2/s2point_compression.h
+da1cf2450e93ea90e7404cde9d9b42bff6d33beccdf25b06bf19f8ce9f3aded7  src/s2/s2point_index.h
+01741f436714c59bc07174647cf589b5636501acadba9ccd17b85bf80aa668d4  src/s2/s2point_region.h
+a61d18cab5693394ccf35bdeea11801915b0607f1f8552f1b7eae26c2695aa8d  src/s2/s2point_span.h
+44b815500949eaf94c0b731f410c3772ff9fa0d7433fd9927d6bed85cf900aab  src/s2/s2point_vector_shape.h
+2168a36450f2e1576522ed2b112acae063089e4d58804c5ec2dc5a59c6e465ae  src/s2/s2pointutil.h
+e95c0e45f895a6f06d9aa6ea9288a70efc1c79085f42866aa46055af6f2c457f  src/s2/s2polygon.h
+a58becc4dcc91b770b2a86458f195db59b9a42ee0fc3075cbf0eb75123072202  src/s2/s2polyline.h
+81ca92e8261264b5057e96ce6c76f3c752f6c107b914e76f63b9103050a8e239  src/s2/s2polyline_alignment.h
+11ba955f9e9f41b0b45b15106ff235deca6126fe51312a4556b1d6e51f9a6f50  src/s2/s2polyline_alignment_internal.h
+0fe646dada78e7004d4872084f70f733ff43eea302c312218f18552e210c8afc  src/s2/s2polyline_measures.h
+6365f90264afa0919b857136b5ddad9bf7c9e8dec757590196096ef02c6e8ec8  src/s2/s2polyline_simplifier.h
+1baf4bdbbd4bd50022f05e0ce8f759c837e130cb4b93e49088e3021bb546be67  src/s2/s2predicates.h
+b1d3d7494c48563b81a0f5a75952b1aacef16c10952b7755cdc1e42bac34413f  src/s2/s2predicates_internal.h
+a7a23b3b4152df1b1691345944cbbff8c70044863d2afb6ff194e12fb800ed8f  src/s2/s2projections.h
+290a8dd4c48d3d9a8e4d6bed06514668a068cc24963b729091f5d550d5ac88be  src/s2/s2r2rect.h
+b508292dafd11898dad7aa813d0a5895124cca0e0c202258a05ee5aeee82b74c  src/s2/s2random.h
+853e11a936d95109fea8796ca85c94072122e9b6a97f796d94b0604d98f3ba66  src/s2/s2region.h
+22afa48ced9a9d007f4eb2fbc0e8d4dac7b1783f1265c51bfe511d5ac1d73cd3  src/s2/s2region_coverer.h
+f26244463596a11dfda716536f2ec984c0b4ce4eeed8e64d804b9705ef37c018  src/s2/s2region_intersection.h
+b52566fa2c83e71abbacc7c41f3bc6177774092235e2874d38ff6556b884c0f0  src/s2/s2region_sharder.h
+7e8720151c335bb03d884340fb2f3b6deee9e569e8c545f1f7222bb19d668910  src/s2/s2region_term_indexer.h
+35568b4b29cfaa9c3a7bf95f49c782b415909ae32bda379ef982256e0c130bb3  src/s2/s2region_union.h
+b6520a1c153dcfca293250e9792ad8de17cfe6c046115e23db1619d418d23163  src/s2/s2shape.h
+ebd26963f8c6aee100f02b77c71bba7eab88405bccc6311bc1b16e53d78c292b  src/s2/s2shape_index.h
+388d636eca62558a65ff9c308fb9c36475d721718240094a19efb2922cb86f78  src/s2/s2shape_index_buffered_region.h
+18174e5e1d01864fbcb74060cf0244c4094900702b8ef92f44dde3c29f878e41  src/s2/s2shape_index_measures.h
+6f353118b3a86d7432f24553fd8eb207237625cc21d6b72a47b9953c3f92fd60  src/s2/s2shape_index_region.h
+0f4773c9a5717c7c1c8958fee165017f94cd72d9e2ee773bfefae67b8d776dd1  src/s2/s2shape_measures.h
+bb8649382180fe65dcf2a29bdf6c95ba3eb3005ce5eefebb8c0de9b95148800c  src/s2/s2shape_nesting_query.h
+ee4aec92ee9971378375d1cffe7160b0b21ebbe257e39532892494416962fdb9  src/s2/s2shapeutil_build_polygon_boundaries.h
+e0d7db063bbd14a794863a37cd58a023bedfdf513906da859f64389c8e781430  src/s2/s2shapeutil_coding.h
+9c87a16ffa40780df3d15ed4a82b620e378a59decd47dc6787e2c54f5c98edd5  src/s2/s2shapeutil_contains_brute_force.h
+69ca0f1edff0ccf6de1cd575c4a5977231fb1963806f587556ad4bc74265f292  src/s2/s2shapeutil_conversion.h
+c1ee366dcdb4f683da37a2831e73ba7033ed6488f02d47d991a7246815364d62  src/s2/s2shapeutil_count_edges.h
+4f7a99abc7191faf084f3bb71e204b73de7e2dd10ada369a4382ebddddc39c19  src/s2/s2shapeutil_count_vertices.h
+ac9b39e75a692de149caf090a3a8d21cb68618fc3f98e7e81647bdf3acae61ed  src/s2/s2shapeutil_edge_iterator.h
+af199e951ec49cc7120216b405448dc6266f371fc3c5eb1891aaab3f5a827ac8  src/s2/s2shapeutil_edge_wrap.h
+1730f27811b1468dd34666ef7d831b7f29ef527ba987d6c3ee2a1d3735363566  src/s2/s2shapeutil_get_reference_point.h
+aef9bb8b182f664a8f0f36bb59dc807e12afc8bd42d9a444ebe62e04950e937c  src/s2/s2shapeutil_shape_edge.h
+45fe2acae9039571a8392e92b9e4293f6dec9892b24cd11a07db28640816bf1d  src/s2/s2shapeutil_shape_edge_id.h
+b8db8f9771cbc82a3c3e117ae8ae7c74fe1463541b5522ee352704e1eb398222  src/s2/s2shapeutil_testing.h
+55566ca7b4f2136ff3338c4ce4f3f3438863521ce365785d7def146e4e262123  src/s2/s2shapeutil_visit_crossing_edge_pairs.h
+7c890f88dcef92295969bfef8a52f126d6ba983fcdbc46f152f4c0f879677ec0  src/s2/s2testing.h
+d63c423f2536ca4ce0d8a0284853c619c7f16d5881002b63e41b882ec9d7d975  src/s2/s2text_format.h
+212024b67b37d8fb12fa7ec2b41d39cbb14866536191fbe2f201b965599bf3a2  src/s2/s2validation_query.h
+684d5467ed461cc75148f1168c8ed892e43b49144cfd0fa7419fe1641e97d339  src/s2/s2wedge_relations.h
+8d026de5951c16c78bb4fbead950934ce6e0506f552b12496996bdcad2b499d9  src/s2/s2winding_operation.h
+8dd7c9abd5c9b96a7ade116d194d4b5f3f6e914858900576848a2398b2f5b5b6  src/s2/s2wrapped_shape.h
+302135814c73deb68664e92583757b76bbce87605593771fd67c63378dd5271b  src/s2/sequence_lexicon.h
+f2b1fc4521b5ad258ae72267779fbb0b09e39ed10050168db5df349eff64996c  src/s2/testing/gtest_prod.h
+c69e63286a6140aa78bcfa3edf528ccd6560d9bbef3953d86388b66f2beb4a27  src/s2/thread_testing.h
+6405bcb83bff4527184c732cb6c7854e82e9c938626a13ee04b783452f5a1b47  src/s2/util/bitmap/bitmap.h
+5e2064e43eb7393bfdabea55cbba66a08b5b25cd5ff267f4a70b76d5515a5e58  src/s2/util/bits/bit-interleave.h
+a260b85585be1998a52f8c89be34f126b5d8b88f801420a18e19a193b4761ab8  src/s2/util/coding/coder.h
+67e6114dc42847b5bdbb39a3003b12e0c80d142e995143292e80197a09ee459c  src/s2/util/coding/nth-derivative.h
+f1af1fbd80437a18624af5ee784b2a854780ea6d2e3007e35885ec83a48d87d4  src/s2/util/coding/transforms.h
+438688ba5d55ce9dc3c891e3a36eb06da8fe371384c5285f30988c4571f0de6f  src/s2/util/coding/varint.h
+4a914df158067347e95117845b5537dea0158f961a8d28eff6b3bd93b6e1e1d7  src/s2/util/endian/endian.h
+a8da74b22fa72539054830bbc0ba514ed823ab5df27087a4da65677332e2420c  src/s2/util/gtl/compact_array.h
+b39e4f20ea65f52a753a32a1ebf399572ca5373458a4b2a0ff1cbf8f2d031e33  src/s2/util/gtl/container_logging.h
+8f749831d6a54b592dacfb5fa8cf9bf6e137b089fc1b29a49db64103fca8ae57  src/s2/util/gtl/dense_hash_set.h
+309fb7d90448e374d508181e2961782acefe51dd55a7681ba571789fa3168b74  src/s2/util/gtl/densehashtable.h
+74afe696b25f3045ee1284ae5408f9d930119a10e74f0a3e13df6469662b19c6  src/s2/util/gtl/hashtable_common.h
+15d4210aaa5a1dfb547179ada6c120a65a717b53a7ea71ed9b7db807ddd4a839  src/s2/util/gtl/requires.h
+bc11e411fe4b172247f7ae2deac0583a006fe2cea7ce1ab6fc448c18d1da24c0  src/s2/util/gtl/unaligned.h
+b1ef9601909d1ddbae62a527e4c0aab8a3a82fb4b1bc9174cf5caaa52d3cd083  src/s2/util/gtl/value_or_die.h
+5615cb1c3b0600505ee82e63a8506c8038355538f60a9ca9a8e8612ad24ad6e7  src/s2/util/hash/mix.h
+fa4a1e38aef75dc5a98f716be77ea2c983d98c2afe5b9ba9260a86dde220d02d  src/s2/util/math/exactfloat/bignum.h
+3d03789fc98bab69b58411c27ecb8f78f90803abd6a5c729946124bb7f3b1289  src/s2/util/math/exactfloat/exactfloat.h
+14f9d7ca69bd2eff80e4e34dce55cafb7f4c89b19a407739b8f36a9eb53f0e7c  src/s2/util/math/mathutil.h
+49139ed8be043a41933bf8ed2a9d5d5e30797972b8e337cfcd8a684365a83ee7  src/s2/util/math/matrix3x3.h
+1d69a1ee48bae9ffb72e261decb2c8fd4a7d25fc8fb0d9865ef6622d1782ddbc  src/s2/util/math/vector.h
+d3fa98d3cdab961082eeb1fbd28c0d4b04fc9d199018f19300a4a849dce340f3  src/s2/util/random/shared_bit_gen.h
+7bdd10d33fe91014bb42913d13ae94abb7fab631c3f4eb7589c8079cbec5dc34  src/s2/util/task/status_macros.h
+a143bdaa3fb3da770b0e5e60cb4b587b1e99ffa1cfe54de1599b05345d5b1390  src/s2/util/units/length-units.h
+defdc6cecdedc298d3682313072a7c775cb11173feaf939d6550fc27af02839e  src/s2/util/units/physical-units.h
+75111d231bff8dba0cdd2cff92ff81b05f49ea1b76a72668d076a35fab791387  src/s2/value_lexicon.h
+
+# C. Abseil LTS 20250814.1 library translation units this package compiles (153, upstream block order)
+cdbc48ce60c991af83e28e575c709157f9d40698b0578575c1f7af5c91014a88  vendor/abseil-cpp/absl/base/internal/cycleclock.cc
+# Upstream d38452e1 baseline: cfa1546c5749b1028f69413cfa9a7ccc29908c9878cd3f899405853ef9afdf83.
+# Bounded WASI portability deviation: aligned backing regions from the real
+# SDK libc, with distinct regions never merged and splits keeping ownership.
+dff2cfb7a3d22c8104feb4ae7a08172f65d79c2531b34a77663c546da87dcd6f  vendor/abseil-cpp/absl/base/internal/low_level_alloc.cc
+5bc376f5da00670c5d09b6dd41f41611f95ef61c6e66c99e956005b6a329a761  vendor/abseil-cpp/absl/base/internal/poison.cc
+d9963fd759bf19228a95fad38dc7866ee7807ee6b9bbec64d8cefbbbf1344d2a  vendor/abseil-cpp/absl/base/internal/raw_logging.cc
+366d44ea2fd61a9a316156c17044f31544e88a94bba0a17ece6851d9b76923ec  vendor/abseil-cpp/absl/base/internal/scoped_set_env.cc
+ce997074385e581616f5c340576aa05f13b5d1f60675016710ebfe88dc1ffb6b  vendor/abseil-cpp/absl/base/internal/spinlock.cc
+e989b018a2f8b6d3d1d20140c9f91f06804a579e3ba21a1632772d193349f322  vendor/abseil-cpp/absl/base/internal/spinlock_wait.cc
+3036779c27a8ac5ea27f5e970fbeaefc3038e74e3507fc1e8cb1ad438dbc4553  vendor/abseil-cpp/absl/base/internal/strerror.cc
+ed3bc1ef89bbdb91d51d2d4164919ba635a9cf912e35ad1477940599890378d0  vendor/abseil-cpp/absl/base/internal/sysinfo.cc
+15add2981dd37bd509ddacd063745c339e0d15169a6d16effb8da91db5bd8b6c  vendor/abseil-cpp/absl/base/internal/thread_identity.cc
+e151b0c7a5161f86f84478e5f1f8c337a34cdbc8e189ee17cbdbb4a5ed7d8ad0  vendor/abseil-cpp/absl/base/internal/throw_delegate.cc
+889f4b56f3822e53fa2346d1b9aecbe16c5e9fb2ee581f061bafbca5dc818a89  vendor/abseil-cpp/absl/base/internal/tracing.cc
+0b2a3168e0f26673c31e2a025ecdb7f852e0916fa55a376423b37121968de817  vendor/abseil-cpp/absl/base/internal/unscaledcycleclock.cc
+efaaf59cd5f5eca44f828b7c9c8743e65f4f2d57d22623679c9863091c28dfa5  vendor/abseil-cpp/absl/base/log_severity.cc
+b2b10e6065a80e77a921389fee72af7e758cc2acdf91e169be084e677ec7c2a7  vendor/abseil-cpp/absl/container/internal/hashtablez_sampler.cc
+6c8f7bb25268819448783a2324c12dac6dd7315a6d4a389affc9be79f6569ef8  vendor/abseil-cpp/absl/container/internal/hashtablez_sampler_force_weak_definition.cc
+2b2712db8e45319a2f9e1f942f29908e6fa182c9f55d052ad00b921a5b58e5b2  vendor/abseil-cpp/absl/container/internal/raw_hash_set.cc
+0c8ee663f612e7043f8d87e1e148a27ff26124796c956c2cbe1ba49d065700ec  vendor/abseil-cpp/absl/crc/crc32c.cc
+71177b201b973beb2061249e6ec88a8f22e899e8e4446d7786535f3af51baa34  vendor/abseil-cpp/absl/crc/internal/cpu_detect.cc
+ee3770bf51bc5b100db87f03a13d3656492ea1f568088dadc3131b8c5bdbf91d  vendor/abseil-cpp/absl/crc/internal/crc.cc
+5ef86225285805f25d731d63a78c448dafd001c8ae9d7b148150adf7d6d20c1b  vendor/abseil-cpp/absl/crc/internal/crc_cord_state.cc
+7e8219db4cbbe9c61ffe8abbeb946e6636d459b5a2ea8f1463986393911c70f2  vendor/abseil-cpp/absl/crc/internal/crc_memcpy_fallback.cc
+2f8e472a092fbf9a396a581e48a4360c52d21c69e3ee8149b26f1ee39aeb9a92  vendor/abseil-cpp/absl/crc/internal/crc_memcpy_x86_arm_combined.cc
+69fdf6d1bba84d6e827e10c95bf816d31097f1056cdf9320507607ce8c1e2b9a  vendor/abseil-cpp/absl/crc/internal/crc_non_temporal_memcpy.cc
+30384dec8fa76caa5be91158ae7078711e022d00df2cd4417a06efc4d8d17cb9  vendor/abseil-cpp/absl/crc/internal/crc_x86_arm_combined.cc
+04d3785c1e66870ed18bbc22e9efbbab431c684e925ead287dfbe17af69b9b21  vendor/abseil-cpp/absl/debugging/failure_signal_handler.cc
+8bb6e133db6007fd094e6390b6174485e9ed125136b32753ce188d2adf15829d  vendor/abseil-cpp/absl/debugging/internal/address_is_readable.cc
+132ab8eb665d87542bae70d74d45ce543bbbd88a898323185eb3cade9ff78b97  vendor/abseil-cpp/absl/debugging/internal/decode_rust_punycode.cc
+3cf7f537c318df3e34cfec21d267f960e2afc3c23cb9cd9e9ba7ecde5b0ec4da  vendor/abseil-cpp/absl/debugging/internal/demangle.cc
+17d94a1e685cb2620ac796dccb860ae7c40931f31f91174174c43b4ef73a05a8  vendor/abseil-cpp/absl/debugging/internal/demangle_rust.cc
+2a59a5ba164ebf3e4f85d6aa4ce67762de159a2d19f0ded49fe199399b7efeaa  vendor/abseil-cpp/absl/debugging/internal/elf_mem_image.cc
+# Upstream d38452e1 baseline: 7f6754bffa6686271cbc5fbaff95056e0016368ec295bc022b90ca20c4ad6686.
+# Bounded musl PowerPC / hosted Hexagon ucontext portability deviation.
+023ab11ffbb0ee50a824f2bac8ea7bc54cbd290e006ae6ad51ecdd4c39120869  vendor/abseil-cpp/absl/debugging/internal/examine_stack.cc
+76be75bbe34f71139ee6b92c7e11ac075e0b7e0c0787ba24b19d20af79765c7a  vendor/abseil-cpp/absl/debugging/internal/utf8_for_code_point.cc
+0f81f404494588834b6e52e9fb2392f826ce7b13600ec7ff4664b340040442aa  vendor/abseil-cpp/absl/debugging/internal/vdso_support.cc
+4bb2947b2ef7fec87ae70e9322375724800e792da789ec79655631f6accdc428  vendor/abseil-cpp/absl/debugging/leak_check.cc
+4afd8320b5440a298ad2777e0e82f83104acd40279b093d592bc8ef3691ea1d3  vendor/abseil-cpp/absl/debugging/stacktrace.cc
+bd45f9ccc9a4388bbcaf47e60c1965e8a957c3b590b0be8acd2c0acb67acb3b0  vendor/abseil-cpp/absl/debugging/symbolize.cc
+6a75d0f635553ce7359b58e06d94fdca16123a21d30a9914519110b0007df81e  vendor/abseil-cpp/absl/flags/commandlineflag.cc
+8e41d49e29e961cc55587fb6868d1227ff147d9b2b730d05f91829cede043723  vendor/abseil-cpp/absl/flags/internal/commandlineflag.cc
+9d10c7fe4393b4716980a5e1e1a5ecd6da9fade8dabe90ec0faa52de3a855033  vendor/abseil-cpp/absl/flags/internal/flag.cc
+4140b05829b0012df6579d0512df33a87b6691ac91aeedcc57bf406cbeaabe56  vendor/abseil-cpp/absl/flags/internal/private_handle_accessor.cc
+06ae82df0ac41e03136b89d5a77169b334cabfcae77c2ef386d3c75e5c02d5d9  vendor/abseil-cpp/absl/flags/internal/program_name.cc
+8d65cd761ec5575fcef9ac754ad427bfdc3e3d49c021f3cd2ff3bc05689fbb17  vendor/abseil-cpp/absl/flags/internal/usage.cc
+0c7165ad3030c06e5938e48025ea5491b33f3cececb490520e8c3eba09ce7ea4  vendor/abseil-cpp/absl/flags/marshalling.cc
+eb0174cd9dc52831dae80134e36acdb454b6f618aa3dc5fff26f9a65156babc2  vendor/abseil-cpp/absl/flags/parse.cc
+b75d63ed91d0640fd726eb425a2902b8d52faf8c790b731690ef53dd9d3102c2  vendor/abseil-cpp/absl/flags/reflection.cc
+03e46c51b2da60539a7bb55093bc5986ec85c8d1b4f80a03024040e45bedeb56  vendor/abseil-cpp/absl/flags/usage.cc
+8ee37922c0109a20a5f222e8df842dc376c35c1174924162681bff2a32950663  vendor/abseil-cpp/absl/flags/usage_config.cc
+b1293c086b1d8b5f7a24e850c4939fbb0b19eb304e92c53e86dfc9d671f68200  vendor/abseil-cpp/absl/hash/internal/city.cc
+c1e12d50f5ca2e93820ce34929c3bfe1e3db3c397c3eb609ca7ba1df2bc76357  vendor/abseil-cpp/absl/hash/internal/hash.cc
+1ff4929dd443a91a082151547d8cd7d8ee452ffa82794f2328220b2cf4db2e45  vendor/abseil-cpp/absl/log/die_if_null.cc
+f61fd2a1c8bd53d0830ff23c7bf12f9960022f0708c8ae15046023894bb1183b  vendor/abseil-cpp/absl/log/flags.cc
+ea7ba7836de040fc23468fee679e2ad1da1bfe33b7a8906794e63f46784b4e54  vendor/abseil-cpp/absl/log/globals.cc
+cf15eefd9c70464e1ef3f5e184374aa40ebc513844ca01b7961f57259e0d9d0a  vendor/abseil-cpp/absl/log/initialize.cc
+732c171223c9a1a464912bfeb75e49bb89e3050eb39722338340ec255f02a53d  vendor/abseil-cpp/absl/log/internal/check_op.cc
+4572ee87a770c154579d596dbf73430676868de905b5a685537b5543b4d2e35e  vendor/abseil-cpp/absl/log/internal/conditions.cc
+320028e79531b9cb33b6ca60c97db3dff2b5f09137969e7b0b09c9e1267e5b89  vendor/abseil-cpp/absl/log/internal/fnmatch.cc
+c33d0c657cb8b8cd674a77ac17bf45ef33da93820f380d70009950553df1953c  vendor/abseil-cpp/absl/log/internal/globals.cc
+0fc438873d35b2ec5bfaa6620cdc74633edfec9421139213ddecb543b1b9aa51  vendor/abseil-cpp/absl/log/internal/log_format.cc
+2a9b958e0f0258b31146520f133452cc71eb512fa253400de8f5fd2667060b27  vendor/abseil-cpp/absl/log/internal/log_message.cc
+02dc555b5ebcc4df16a063c6f219a7544f48c1ac42c80c614fa6abfbb7cd795b  vendor/abseil-cpp/absl/log/internal/log_sink_set.cc
+eb4de508d45248fe70181e74ad8face3e14090e11c610dbc7b6bd5ece7baa6ef  vendor/abseil-cpp/absl/log/internal/nullguard.cc
+97b6ae9de3de79dc4276a422d499a8b3f3cda1751fee0eaeae122d974c8b3f99  vendor/abseil-cpp/absl/log/internal/proto.cc
+46d5b04cf18f75cc5bbefd9f331e413ef86e578365d6104e986b6367590d4527  vendor/abseil-cpp/absl/log/internal/structured_proto.cc
+997857655db61d0a1c10c42714a838016074c69ff3e21008fcd5b63b65832f91  vendor/abseil-cpp/absl/log/internal/vlog_config.cc
+d09f3b0d6b53457066eef5dbb57a1a772540b01f03c5203aa567c1bfb548a432  vendor/abseil-cpp/absl/log/log_entry.cc
+26d0cddecbc4fbee0c5cb1dad4ad05069b850ed7c768fc72a6d0c932247aa447  vendor/abseil-cpp/absl/log/log_sink.cc
+32605487cdc03e3eea9e8619f898a1beba642469fbf16bef255cd1f3e3c7d9a1  vendor/abseil-cpp/absl/numeric/int128.cc
+86722185b91dac90cae9b1ac292873fd7e8b9ceb57074cb30f8f244b24abe70e  vendor/abseil-cpp/absl/profiling/hashtable.cc
+718aa40e5ab5efa1bb061bd80991d1cc6ab8d5727a268a9dcb77046308351e4c  vendor/abseil-cpp/absl/profiling/internal/exponential_biased.cc
+a18bd74c88af74f24e3be53fe0d730547e6f4e7caea6df8a4182bc61ff55ca75  vendor/abseil-cpp/absl/profiling/internal/periodic_sampler.cc
+132579ec1a17919a4cfa2f7c2ab31261619316ed0c4ae73d752e2c95d5272393  vendor/abseil-cpp/absl/profiling/internal/profile_builder.cc
+519c3b90192920b93b3dff362530884f44d1bed3e7c231ddd01ee4350cde7e0d  vendor/abseil-cpp/absl/random/discrete_distribution.cc
+d71bf23dc7792694b55fe97defc80191fb922a97671145d3ceec529c0152dfa5  vendor/abseil-cpp/absl/random/gaussian_distribution.cc
+e85c89e35f133e8330ac9ab6050391131224043b7a2b6642be787eeea0b8ac32  vendor/abseil-cpp/absl/random/internal/chi_square.cc
+a23a1b4e53d2a3fc57e7db846d257044c8402e3a9d551d486d2004536db839df  vendor/abseil-cpp/absl/random/internal/distribution_test_util.cc
+3f4e33c52d1d4d9378340ffc0cfa51b46563ddd3fe3df1ceab2263b82cab9180  vendor/abseil-cpp/absl/random/internal/entropy_pool.cc
+a317d2850ab331466aa6791a2022aae2e4253323cc0fdf05d49c66678a76dd7b  vendor/abseil-cpp/absl/random/internal/randen.cc
+0db388f73aa4509605135b8a6fd5d572b10dc665fc14312b604263a5aacf64f7  vendor/abseil-cpp/absl/random/internal/randen_detect.cc
+6aafa06bc5e477306afb533b9580f1c4e3cdbcabc0436af6d4fe0c22da67685e  vendor/abseil-cpp/absl/random/internal/randen_hwaes.cc
+1b9ef1c62811c525c61515e3b61e06ea90d75cf7df8cb200c61bf11caa4ceaa2  vendor/abseil-cpp/absl/random/internal/randen_round_keys.cc
+78b760f9fd4ee55317ab099d7f400f25fc30cf35ccbdd383d400cf6b382a3871  vendor/abseil-cpp/absl/random/internal/randen_slow.cc
+e0b33842ec5082e567a42bad84c689980b875320894180bb61ea7fbde99394f8  vendor/abseil-cpp/absl/random/internal/seed_material.cc
+12a895bd76db4740811e37722598d5ea7aed4c1d09a482a4c11aad57279faa78  vendor/abseil-cpp/absl/random/seed_gen_exception.cc
+f07a6575b18d19391677e320adaaaf49004ac28c92f0803dac86cf81db3e73ce  vendor/abseil-cpp/absl/random/seed_sequences.cc
+90cf845456fe5fcf84c396774c2ff25bb8ad16e94408b8797037fdbc8b4a8576  vendor/abseil-cpp/absl/status/internal/status_internal.cc
+cf2c35d930ce89593171a14fa8f04dd43e3c9f459dec47428a210fe9907a8d4d  vendor/abseil-cpp/absl/status/status.cc
+83f6404f1cf326e81f721106b4746fedd4660ab62017dba1e8df8dbd83e6fc04  vendor/abseil-cpp/absl/status/status_payload_printer.cc
+9d0e05e4bfc1822512622674cf977f98f45c9ff162746616b98f91b0f3638a3a  vendor/abseil-cpp/absl/status/statusor.cc
+a5ed5f807b8ab6c9af2fe711743cdb4eb86acca561958f5327463b212facad1e  vendor/abseil-cpp/absl/strings/ascii.cc
+e852b59ebf25876e6c3680153a4ba5eb4b018e276792eb0ea04668ca72ddafa9  vendor/abseil-cpp/absl/strings/charconv.cc
+dca16524fc23dc322b723e035d2d81c82dd41e758b790e7f0474382b7bb32801  vendor/abseil-cpp/absl/strings/cord.cc
+1f4ea5a16df24fd98f7940e535c88b53c62c23a5bfc506e5d02721c62ca4154b  vendor/abseil-cpp/absl/strings/cord_analysis.cc
+d3f4620807956e48dd7f7a2d0cb82be353fae270a7102ce75a508ebd1b90cb2c  vendor/abseil-cpp/absl/strings/escaping.cc
+985fe74bb62b6b3770e14d9962f846dedf25950ea69fa34dce5ebc267692f586  vendor/abseil-cpp/absl/strings/internal/charconv_bigint.cc
+aaad316845801e6c8423cf7c280f1329ea9ee4d4380e7caf4f96d6895f33cff0  vendor/abseil-cpp/absl/strings/internal/charconv_parse.cc
+9975a6550cbba09a0a6183be25d7afa3442e835fe851a7084104e262e227738d  vendor/abseil-cpp/absl/strings/internal/cord_internal.cc
+50f60b2d874d12866f7a6d7b5dbc2ae8a8b9611d1fa6eb5ace5a8d0985ef20ed  vendor/abseil-cpp/absl/strings/internal/cord_rep_btree.cc
+f51b1f0b9c4efc4f4ca74fd6954bbd94c76e493cbcacedb523b92355c21676be  vendor/abseil-cpp/absl/strings/internal/cord_rep_btree_navigator.cc
+88aa970f57a3fa1b930c565eaf8b4a8e349674b819501bd2a744af078757bee7  vendor/abseil-cpp/absl/strings/internal/cord_rep_btree_reader.cc
+2565665bb5bc7ec689a6deb134705aad6bcfdb0d7e462afacc926cbf4cc9f14d  vendor/abseil-cpp/absl/strings/internal/cord_rep_consume.cc
+8172c9cf2609dd2dfbeefdee52e688223d0bc85ae1a77bdf4ba6bdd898de6716  vendor/abseil-cpp/absl/strings/internal/cord_rep_crc.cc
+c5654f7d82706f71adf7e8f2391eb40202f273992a7f8827f116f7f54c57fbe6  vendor/abseil-cpp/absl/strings/internal/cordz_functions.cc
+7ff7154368a9274e015cee4ff52bfaf147b23927a6b374bbe9eeedb834346a5f  vendor/abseil-cpp/absl/strings/internal/cordz_handle.cc
+971f5cf3934a1fe129e006da8796436460d77394f6042cf3ba4ba2f6e08fff95  vendor/abseil-cpp/absl/strings/internal/cordz_info.cc
+2ce2a0d5adf9cee487c03204ea67cada371cc1ce2d837db89032ba5d1c66f648  vendor/abseil-cpp/absl/strings/internal/cordz_sample_token.cc
+f344c1c9327c01935322342374aa0ada0bde64d36792e847f5d5b5f350163502  vendor/abseil-cpp/absl/strings/internal/damerau_levenshtein_distance.cc
+0e9e67a98e122760ca370df801486f919c58a905ee0a79817e6f56835298e4b1  vendor/abseil-cpp/absl/strings/internal/memutil.cc
+8144b08eda95dd10d2b3e334447fb658c0c908a0746c97e571c292a78d61cf8c  vendor/abseil-cpp/absl/strings/internal/ostringstream.cc
+b8d3ee98fd39c75bfa29a7006c7946fd5f33d135dca3d0be5ed83969d03dea2c  vendor/abseil-cpp/absl/strings/internal/str_format/arg.cc
+a3a5122975f18cd671f27c4f6d8e3c96eedd91c9b938fd9ace1b7f46bc5c91ef  vendor/abseil-cpp/absl/strings/internal/str_format/bind.cc
+dd4635b00f4b8ea7ce26445dc1be649076c8d5fd3a2889f801d4b3e884e95e12  vendor/abseil-cpp/absl/strings/internal/str_format/extension.cc
+de4dced594fa65ff3579bcba6e7d17ddd3b6231e5cdc508ab716be46b664eab9  vendor/abseil-cpp/absl/strings/internal/str_format/float_conversion.cc
+9bf53a434ad06e387e653fbb656d79307f59eee38655eff8174ee2a48b1b30cc  vendor/abseil-cpp/absl/strings/internal/str_format/output.cc
+43b7728b823ce2b690c8a914d03a00f2caf3622ee42e93ba10c21dbef15fe61d  vendor/abseil-cpp/absl/strings/internal/str_format/parser.cc
+08519bca178ff4c5c3c56980d25c90115bb0ce7a2d7386646eb0577ea8caade4  vendor/abseil-cpp/absl/strings/internal/stringify_sink.cc
+7487250046419a305cc436e29616ebcdb425e4b5ed534efb5a45b8ca7604e02c  vendor/abseil-cpp/absl/strings/internal/utf8.cc
+0b415798611eb145520fd2af277c7f61490e070d316dca45937e2409d44219bd  vendor/abseil-cpp/absl/strings/match.cc
+56d3fa9bf8da441d8475aa437a38f51452c6a43087d32379423c35e6d07684f6  vendor/abseil-cpp/absl/strings/numbers.cc
+fded8aaf44616b24a8a00ba3660f5f1ac815cac14c7e3e5153a7eb6051450bf1  vendor/abseil-cpp/absl/strings/str_cat.cc
+dd02636644c031af270e9ef9ead1734a5b38b4895803e86b19e6bd68369fa9d8  vendor/abseil-cpp/absl/strings/str_replace.cc
+53bd29cd45464a8f78cb9fc8e1960a227455f0e4dcfefdcc0b862894fb4b6aef  vendor/abseil-cpp/absl/strings/str_split.cc
+b54dd4b47bf968a4aa00ab8bb7ae743f87c5e37d86e4ae39610b074b02e392c7  vendor/abseil-cpp/absl/strings/string_view.cc
+f207d30f12fc896672c577f093ae534caefcd2282c32a23349e94a377d5a9c23  vendor/abseil-cpp/absl/strings/substitute.cc
+20acbf8b5a6b72f0791a37004ddd7e77b8cbe4ee4028b2ed845d25f5b993cfea  vendor/abseil-cpp/absl/synchronization/barrier.cc
+292b61881a1ed3d871a9104c851614f7726f0ac7b48d8d9d7d9e75018f4433de  vendor/abseil-cpp/absl/synchronization/blocking_counter.cc
+c0f2fba8b6815fd49fe0d4535620124d2fcd6623778b853dd39178bbb0786752  vendor/abseil-cpp/absl/synchronization/internal/create_thread_identity.cc
+c082f4e0d690b214aa53177e2bddcd6fa290046a84b4068be40e6403498e3684  vendor/abseil-cpp/absl/synchronization/internal/futex_waiter.cc
+8a83d24e79e3644d79bb4ac8c450359f0a333a9bd8bcd4143088c5019ed03e73  vendor/abseil-cpp/absl/synchronization/internal/graphcycles.cc
+24eb698bded18ece551b8dd16b23c89b84af88595ab2a8017230e9380063aa9b  vendor/abseil-cpp/absl/synchronization/internal/kernel_timeout.cc
+157058c93c415feffb562002d51f9946e3a18f347d23e3c7423fba8dfcb32b43  vendor/abseil-cpp/absl/synchronization/internal/per_thread_sem.cc
+e0885ec488d1c27e022b1787eed6e3e91016ffef7715a9cb0935c1b416768e83  vendor/abseil-cpp/absl/synchronization/internal/pthread_waiter.cc
+e1632d6d40ff598c064491771c8d46bbeba753c20f1933d2e22fe3710e3fbbab  vendor/abseil-cpp/absl/synchronization/internal/sem_waiter.cc
+46a2b11d558b7da13918e1e3c937827d7dbb7d860a0af902c4cea938ed1babe9  vendor/abseil-cpp/absl/synchronization/internal/stdcpp_waiter.cc
+3bc421f38aca3393734b4f71b13829fd8e9d2e7834e2fe01262e9dcac044b73f  vendor/abseil-cpp/absl/synchronization/internal/waiter_base.cc
+8ab262fec4937ba44e46994a1cea87b4ea9dd7e58afc85b1465f80b9dfc3c796  vendor/abseil-cpp/absl/synchronization/internal/win32_waiter.cc
+bd9552365d66bde15ea849777100c7b19e6ad12a1b6f5626b17052822aa1e2b4  vendor/abseil-cpp/absl/synchronization/mutex.cc
+646f015f2d48ae8e6308cf921b345d43f60a7ab6f709de35bdf43656f6ac0608  vendor/abseil-cpp/absl/synchronization/notification.cc
+4cb59f202f503bd60450ca60b30b18f907a7f010a354adc50e1b8fae8b808110  vendor/abseil-cpp/absl/time/civil_time.cc
+048bc60fcc0dbfae956dcf0289064727e1f8c4d357ad83ea9e16ac821c276189  vendor/abseil-cpp/absl/time/clock.cc
+1b2c563f7c2d4fd6cb0c4cdc32b88da1771b93b8ff64c876362a84602740cdd4  vendor/abseil-cpp/absl/time/duration.cc
+286e519c43d8ddfb108674e14717af05b07fd7c6a37b967f9fde58598eb63be7  vendor/abseil-cpp/absl/time/format.cc
+c1777ec78e6e5459e7e981cda16e08094fb4faad2c441699286b162c73b284d8  vendor/abseil-cpp/absl/time/internal/cctz/src/civil_time_detail.cc
+41dd7e8ab05929b4a5118559bb9c160f6d311bb6f0fbc540487877a8161302ad  vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_fixed.cc
+# Upstream d38452e1 baseline: 6bd73b0e64b5920410232c45957c62136a94e1fdc4c18b030db3f547bab05493.
+# Bounded NetBSD portability deviation: keep NetBSD's native locale namespace,
+# as FreeBSD and OpenBSD already do, instead of selecting SUSv2 before libc++.
+65a4efb9f0e8a3d3b8a5b21f3dd3e04c74479f385c1159b946b065bd6b5fe436  vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_format.cc
+32f82be3a5ba500eb619e562f260d770c64d753ddde12386f5cc8af5240429a1  vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_if.cc
+a670f21c9663ef220311ceab57eaaff707e6f629d1c99ef4ee6ebcb5c410193f  vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_impl.cc
+bbfa8d265801eed36de0459e904cd838e7dbe31e38f8b45595d548cc037b6252  vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_info.cc
+498b80b48fe53f8812803873cdfddb5d3dee98a42c8b345fc47ca401de1b2bfd  vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_libc.cc
+f66daacf68804e293a365c03bac7a54a8afb074ca875671b2c6a71a230612011  vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_lookup.cc
+d84d38bc816f306743d427815f81e144dfaaa8f8e1e0cac829231dfb1cb85ee6  vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_posix.cc
+95bf6c27ec0e17953e901f74d9891c881175ddcd7243e9b5abdb7fec0f066bca  vendor/abseil-cpp/absl/time/internal/cctz/src/zone_info_source.cc
+93e8edece002a33cfceecfc9f281772648ec94d275e259822c06fa6f1e27bce0  vendor/abseil-cpp/absl/time/time.cc
+
+# D. Abseil headers and implementation fragments the headers include (vendor/abseil-cpp/absl/**.h, **.inc)
+28dbb3c76247037cd74f54a952b060cdb6b36dc19dd2ebb24d18c8a81133a370  vendor/abseil-cpp/absl/algorithm/algorithm.h
+00af016317c982cfeba331fe30666092106649ab12f0e5486f98700e5c8251d9  vendor/abseil-cpp/absl/algorithm/container.h
+260ffe946f1a16acf2251aabe7e4af9159a56d056c6e00ad8e9f6aa649ad734a  vendor/abseil-cpp/absl/base/attributes.h
+9f65cf0aa3632a53eb3c162ebe1badc89b86d3d33fab3bc05da93853fa911e4f  vendor/abseil-cpp/absl/base/call_once.h
+417efb2fa58a9700031884ac205f55ff2077326db4343a0af0ab13af5456e745  vendor/abseil-cpp/absl/base/casts.h
+116215415196861538316ec3881d68d4dbe2a8cede66703364bf16f7577c95e6  vendor/abseil-cpp/absl/base/config.h
+570a004baf8b9657bb4d6eaa3ca3b7122d0c03e086a7a52a58e739319694679a  vendor/abseil-cpp/absl/base/const_init.h
+a3496b81361bae203aa9e836f132d83781c3a43127a0606d675cb46df07b01a7  vendor/abseil-cpp/absl/base/dynamic_annotations.h
+03625030574b28ffa5eb8607d41fd66d186feb5910a57589bca171b8b276b839  vendor/abseil-cpp/absl/base/fast_type_id.h
+49fdbb61be568af48ba4cb460dc38b508e751197674495f58f58ea2693caf293  vendor/abseil-cpp/absl/base/internal/atomic_hook.h
+7c1c4d89bb67e215992930b4edf150f83d89e8c68c599eaa3af5c1d827e9730f  vendor/abseil-cpp/absl/base/internal/atomic_hook_test_helper.h
+2c06c5c4807d7e0da2b52a554a431b62700b53c2603d8e925958a0d032a3699a  vendor/abseil-cpp/absl/base/internal/cycleclock.h
+efd95d24a167732e73c9382df2cd92807b151018d5339963bba4a32e9c88a8f3  vendor/abseil-cpp/absl/base/internal/cycleclock_config.h
+# Upstream d38452e1 baseline: 33249311c9aac7271dc7195ef302379c8432f8cd0c5e6fdbe5aafbeac8ddadfc.
+# Hexagon uses real mmap2 with 4096-byte offset units, not AT_PAGESZ units.
+37f3fa7e9e6acba3046930036345de8615ee14f4103471df1bc226a0f4242b8b  vendor/abseil-cpp/absl/base/internal/direct_mmap.h
+e7d13740b5e834dabe914f2fd74a09c6ad56f9b37dcb1980027d8f5c3da267bf  vendor/abseil-cpp/absl/base/internal/dynamic_annotations.h
+f3fb5c3eafc6c84614b9f46f23bef48eefdeb6ee6a52de45dfcd8c2a529a93cf  vendor/abseil-cpp/absl/base/internal/endian.h
+01d6842cdb906e98426c03b7fbe24f0deff53c97c449c9aef53ace66079c20fb  vendor/abseil-cpp/absl/base/internal/errno_saver.h
+4b51ff59a234561858eca35136e02207f8c2f2d1e12319fb7a084c495a636bdb  vendor/abseil-cpp/absl/base/internal/exception_safety_testing.h
+4ebf091ee022be142fa8a68b858933a34e6b5c1130df161293c896064a90cabb  vendor/abseil-cpp/absl/base/internal/exception_testing.h
+c883dbe3f0c4aa2688a60293f08366d08a3b8d19b43547652cd00a694289ad28  vendor/abseil-cpp/absl/base/internal/hide_ptr.h
+a7fa9a60c6699555a1535026bcc0684a0408faeaa4e524076c2c2558339d08ed  vendor/abseil-cpp/absl/base/internal/identity.h
+5dbf7c61029bb766959af050b964789cd6a16a44dad635ac9afef5e7e1704bef  vendor/abseil-cpp/absl/base/internal/iterator_traits.h
+762630a9021d3f6ff008d4890dbefc5f99c461cc93e464ada15bad67d17e3a15  vendor/abseil-cpp/absl/base/internal/iterator_traits_test_helper.h
+# Upstream d38452e1 baseline: 0f7dd074b79f49b57c2491987e722dbc0301018937e2a0573e10b3df8afe0649.
+# Bounded WASI portability deviation: the SDK's aligned libc heap supplies
+# backing regions; no mmap or async-signal-safe capability is asserted.
+b48b92d95dc4ae645dbcaf523e738748fadf5a0f1d957e7026c3facad6a6e275  vendor/abseil-cpp/absl/base/internal/low_level_alloc.h
+81c291becefdfdfa55adc782a4b53bb1e133e5deee1dcf22c2759e0a89e303c6  vendor/abseil-cpp/absl/base/internal/low_level_scheduling.h
+e22d04465943f60511e1957fb47e570dd5ff53eb1e3385f084047d3881dcf3a3  vendor/abseil-cpp/absl/base/internal/per_thread_tls.h
+edc45c52eca28b2c8d6188624783f166d6f4bd04650b14892c5c172ba4decf28  vendor/abseil-cpp/absl/base/internal/poison.h
+f4b5125254ffc796bcb5159ac522ec77dbf43fcb8ea3b50355db8179a8db1bab  vendor/abseil-cpp/absl/base/internal/pretty_function.h
+90e01dac7375efc520f5df65c9a03e5c5dc723e5d96fafea4df07c8d8255c510  vendor/abseil-cpp/absl/base/internal/raw_logging.h
+dd30f104eb676a1c75dde910d991792b8516a4dc83a6f008e8f2ff13a646077b  vendor/abseil-cpp/absl/base/internal/scheduling_mode.h
+bca21e86b720ab41b8be1bdca19c3f6b34222f1598230b4ca5c1069bbaab65b6  vendor/abseil-cpp/absl/base/internal/scoped_set_env.h
+9b5f402989b93ec4cbde56c0edd145bc7a4975d3e952c42587924755e961e70d  vendor/abseil-cpp/absl/base/internal/spinlock.h
+8bfcb6d91e4f7d4ca593835cbc70a3eb7fdfd23e4c6ae71cc3c7fb8c5380f792  vendor/abseil-cpp/absl/base/internal/spinlock_akaros.inc
+7c31063a719f144529749577537ad50fc30e76dc1d401c58855848bb5e56d649  vendor/abseil-cpp/absl/base/internal/spinlock_linux.inc
+b2a5b2a9ae76d39b41e77141a4bc6229803a2d972d01897e1d4a4e51b76fb19f  vendor/abseil-cpp/absl/base/internal/spinlock_posix.inc
+0e3013e9da116026a283f881583f767dae9cc8547e8cbe7cb57acc9f2a659048  vendor/abseil-cpp/absl/base/internal/spinlock_wait.h
+b1e006d871e29f5299f4404640549b42c9f3d5004c0a024c39cd7595431189e8  vendor/abseil-cpp/absl/base/internal/spinlock_win32.inc
+4d7457a0a90cfae43769a703c98ee3666692d534d47af8e447dd0e2ae9d1b716  vendor/abseil-cpp/absl/base/internal/strerror.h
+1c4d93e36f84df56d4b24871e0e1232886456866817496efb52782b75050cfff  vendor/abseil-cpp/absl/base/internal/sysinfo.h
+4ab0597e24501f9ef77d55afdeb2b227ad787cee41773ab2a1e9a34240e3fc20  vendor/abseil-cpp/absl/base/internal/thread_identity.h
+262387ec0241ee1ccabaf7c77e2dd3c420435e40e2c3b5573bc09ea82dac5bab  vendor/abseil-cpp/absl/base/internal/throw_delegate.h
+adce22380d61adf9d7601ce7465dbf98887376349a6d435df303e72c7e5d6a94  vendor/abseil-cpp/absl/base/internal/tracing.h
+99a9eef2a559df697297db9682fd873fa8c18d6c27c309f49d081af1a550eaa9  vendor/abseil-cpp/absl/base/internal/tsan_mutex_interface.h
+1987b24054656ebf285c6d04a954791671bf9d8f453dfbf23e836631dca2fc6b  vendor/abseil-cpp/absl/base/internal/unaligned_access.h
+5f988ca685ff94981d69f64bc06d89ba1268b4b5b75e61214a47980ad06dd5c3  vendor/abseil-cpp/absl/base/internal/unscaledcycleclock.h
+f47a7d7b77f8aa18bc5d94f1936208d926cc59f02f0344364096d20c733af8c5  vendor/abseil-cpp/absl/base/internal/unscaledcycleclock_config.h
+4de7b421b2b2780416a6e37e7472f68d9e70fff3a96c2318921ae98c2870b6c4  vendor/abseil-cpp/absl/base/log_severity.h
+c5dc1f42f1ab3fb27e241b6e1369acb0e2c60fbc82f502b5cd315d7162bf2f21  vendor/abseil-cpp/absl/base/macros.h
+f0bb714dea8be2f719bb0c0011de782417e09054ea66921c4303f0f7dac1ce93  vendor/abseil-cpp/absl/base/no_destructor.h
+5408c740af93c976fe60704aa5fc617834d0e999f42bbf1a26a15b7137f3bfce  vendor/abseil-cpp/absl/base/nullability.h
+4486b874676e7676644332af42a19a92e35001a6f6968c3e7b880f143e1dfda8  vendor/abseil-cpp/absl/base/optimization.h
+09070f8c239e61c796cfb7162c61a29c1e9157245c5d948923f3228afc5e7fef  vendor/abseil-cpp/absl/base/options.h
+6148c6dc7e98624ddc57b6e2dfe160f530706e407f4aa2e2132da9fbe4d64407  vendor/abseil-cpp/absl/base/policy_checks.h
+6d2a30c81a0b65ece88ce16086d9402913c5ed1cb8e42e28f508fcd1ba954d93  vendor/abseil-cpp/absl/base/port.h
+6b7e3ad48183f659ff7a11a226d6c9a3a9081a2632e41ce4b1ef11d025dcbfe4  vendor/abseil-cpp/absl/base/prefetch.h
+9d67d4e81e058bdf59c775c5a507e20937b573223493932574036161341b2344  vendor/abseil-cpp/absl/base/thread_annotations.h
+803ad59d7d8018f5e5b5206d233c59bec81ad5eeff9c66a0274ccfdaceb71ad5  vendor/abseil-cpp/absl/cleanup/cleanup.h
+867d48a24d4c07f15271b08ae8b39e2c6de81cc8874d605dee9da89d6d9b40f8  vendor/abseil-cpp/absl/cleanup/internal/cleanup.h
+48736f8cba18711ad7abc74cafd6e78803ded8406555709d52471b17b056e3ae  vendor/abseil-cpp/absl/container/btree_map.h
+68ad813e56777831dc3ec005543878d41102ad9a7b9e680a3cdbf482833de284  vendor/abseil-cpp/absl/container/btree_set.h
+1e49e8bcb287357e5c339ebdb1e8c95d0a6276adc4fdc75e869f063026332757  vendor/abseil-cpp/absl/container/btree_test.h
+1b30f1e45d2202d0b513cdf94d795b4208c94528bc4f8ce47caf9bbd6a6cb2a9  vendor/abseil-cpp/absl/container/fixed_array.h
+77190905ee44f1cde57c96633ab57192482e077990b10a9e26ab513589d9dcde  vendor/abseil-cpp/absl/container/flat_hash_map.h
+fd52830f8a310b4f95d2a7613c79b0abbe1f5161e91e3e3b8bf5ec5f257700fd  vendor/abseil-cpp/absl/container/flat_hash_set.h
+e50b8895bf8b311951a9eb3664b48e966952257760873101f3dcf370c3db4df5  vendor/abseil-cpp/absl/container/hash_container_defaults.h
+b905c94bf34d4b6e6d1c446e189aecea8234ce68beb06a0c3994f4f6e01bed60  vendor/abseil-cpp/absl/container/inlined_vector.h
+40547146572673e633953c1f85bf75ea8cdd6e9beca7b1d959b0dddd859e4c62  vendor/abseil-cpp/absl/container/internal/btree.h
+c642eb0a0888708a4265853421d639bdf062197f2566f16f2abc61baece4f78d  vendor/abseil-cpp/absl/container/internal/btree_container.h
+a2c818cbe6d139e844734b6bcabe5eb34337f71c87e17de9769657c4bf857b81  vendor/abseil-cpp/absl/container/internal/common.h
+1fb892663d0cf98cf7c5a6674caf3f30c17fad99542cbf5a384637617cceb4d0  vendor/abseil-cpp/absl/container/internal/common_policy_traits.h
+d6279e4d5b95357893458c7910a7de429aca64f72f7dda21afdaedd6559267a6  vendor/abseil-cpp/absl/container/internal/compressed_tuple.h
+18cb31bdb53d4adeff31230a31512a10276dc109fb9d247b081080d4820eba75  vendor/abseil-cpp/absl/container/internal/container_memory.h
+7257743a5462a0f11ebed36670799883cff1a6eb5a931db475af086a77a1edc4  vendor/abseil-cpp/absl/container/internal/hash_function_defaults.h
+a712b59a284ab008bd8ce63185efbf4f19664fa63f03c8b7145f24b5a7eb2baa  vendor/abseil-cpp/absl/container/internal/hash_generator_testing.h
+b4cecb6e013372be4d2cee21d92f4df903d9668ed1a01be1c76cb99c5562cded  vendor/abseil-cpp/absl/container/internal/hash_policy_testing.h
+b4c06b14ed7eeccea73c74eef1af698bd94b730dd3ec02b24198b9bf0573089b  vendor/abseil-cpp/absl/container/internal/hash_policy_traits.h
+40ad7cb02f9922c476f66560e11ab705836e8d1dd78bade8dd4782d9c5a286aa  vendor/abseil-cpp/absl/container/internal/hashtable_control_bytes.h
+46f2ca4c7a80602e155717bf23411a35d06658c73be8c83d232ba8f41fd0f1e5  vendor/abseil-cpp/absl/container/internal/hashtable_debug.h
+5057778a79e6675919aa11652a2de71ff76674f0fe0bd26ee43be87046b9772a  vendor/abseil-cpp/absl/container/internal/hashtable_debug_hooks.h
+986f87d4a7fcc9b0461cb63ea6e889411881ebd16420c872d86fdd6f7fee799b  vendor/abseil-cpp/absl/container/internal/hashtablez_sampler.h
+655546c3102ca792b6da8e1941cc6b8e775e32419711e04710cf1d38571eb1c8  vendor/abseil-cpp/absl/container/internal/inlined_vector.h
+81e6c5a64b4ae904f238ef8b7f50479702c69bf580e3fa3ce8699922ebcae268  vendor/abseil-cpp/absl/container/internal/layout.h
+5b9cba53ea9cf4530760b7b46f84120611d3687e5ce99e54edbbcd39c08f8464  vendor/abseil-cpp/absl/container/internal/node_slot_policy.h
+5fd8221e4a3336156435a5135308429b552f559d98000ff963ea6f2b6c36a634  vendor/abseil-cpp/absl/container/internal/raw_hash_map.h
+664a2991e24a3b879d7ba75a36039a01a1a31739807904576d6dcd2a90cad2e2  vendor/abseil-cpp/absl/container/internal/raw_hash_set.h
+84895dab358909ce9fff1c6d5f693bc486fcf7bd01a5aae6785d6a3e3c8c173d  vendor/abseil-cpp/absl/container/internal/raw_hash_set_resize_impl.h
+f011699232307cc5a7daa1c768943fa45f714b1b9865bb494ca4bc941dff1184  vendor/abseil-cpp/absl/container/internal/test_allocator.h
+776b5519e510dcb03db39e87696ffe04565f25f803b66d10f410fa015f1e3ac6  vendor/abseil-cpp/absl/container/internal/test_instance_tracker.h
+a9be85c553744735f1c80100464325fdf33805c91ce50804dc640f05f6d2aad9  vendor/abseil-cpp/absl/container/internal/tracked.h
+97f7dd2d0eceb192e28491acebf609680fa47c36c56943765fd59070ad607446  vendor/abseil-cpp/absl/container/internal/unordered_map_constructor_test.h
+99bf354b7c9cfc7bb3fc0df1c0d90eec70c42fdc66438b37c6119af7aca5f8f9  vendor/abseil-cpp/absl/container/internal/unordered_map_lookup_test.h
+ac13d8a910f42865754620e51dd2f45a022c14f0fd0b3b3067e9da51a055df34  vendor/abseil-cpp/absl/container/internal/unordered_map_members_test.h
+0f1fb723cb75b76691465e8b73b2290cf6e33027e06accd4216a9fd433110f10  vendor/abseil-cpp/absl/container/internal/unordered_map_modifiers_test.h
+23d5782489dc7148a5c1ba6f0d235fdf72a6f0cf49fdf53b30b1e01850c2864d  vendor/abseil-cpp/absl/container/internal/unordered_set_constructor_test.h
+4d9fa22790e6e98d42aa51e107f2690529305d03ad91788186a4d53120861203  vendor/abseil-cpp/absl/container/internal/unordered_set_lookup_test.h
+6dfa5a353a84cc36b09f2e19f6644322f9a3db6b356ddf249f7c95344e516832  vendor/abseil-cpp/absl/container/internal/unordered_set_members_test.h
+c762b232555b0c5735c236abefda887ecd8cdb7c6b9384e16e8ad5aad9748d9c  vendor/abseil-cpp/absl/container/internal/unordered_set_modifiers_test.h
+27a1330b8b49b60dfc4e27e00e6bfa11049cbba4e4673518201d1a4934f6ba25  vendor/abseil-cpp/absl/container/node_hash_map.h
+aca40fd75af42ca7e7c70b6ec3899fea891477147bb0d059b1b685290b5f1b15  vendor/abseil-cpp/absl/container/node_hash_set.h
+531e1af627386e9a0ce09e14140076941d61ca336bdf4a01bad6a9d81361ac4a  vendor/abseil-cpp/absl/crc/crc32c.h
+a08046360f36298feb66ebb68b62830af6e189481982a43259ea02109a8c3b73  vendor/abseil-cpp/absl/crc/internal/cpu_detect.h
+aca60694dd66172d997356f504c399dcea55d3142534137bbdcfba17ea959ba4  vendor/abseil-cpp/absl/crc/internal/crc.h
+a7644987cc72a49d2d971a858561a0bcb361a0e04a0ab39f119c1afb3f7c7945  vendor/abseil-cpp/absl/crc/internal/crc32_x86_arm_combined_simd.h
+10b0d66c450ba04e7b4a6296aeca1bd616b58dcf1906c220e2796688dd6336ab  vendor/abseil-cpp/absl/crc/internal/crc32c.h
+5c6b58971ccd25ea76025fd19acb2458f96f259c97121371911c61a91a64db84  vendor/abseil-cpp/absl/crc/internal/crc32c_inline.h
+3d6abd21c8c1192af6a524362de757ee09a8f2c6b6d9229f755dc3848349d255  vendor/abseil-cpp/absl/crc/internal/crc_cord_state.h
+bdd70448b4722a863e3931f889d7c8e49902a45d83c87ba17cea109794bd7882  vendor/abseil-cpp/absl/crc/internal/crc_internal.h
+66f4cdf770eae4fff62ed097f505ee9912df78fcce9681143365d09b000fe13c  vendor/abseil-cpp/absl/crc/internal/crc_memcpy.h
+7226115d8a593e1d20dd246191d9418631cf316ccdfc0c2aee75b9119838dec8  vendor/abseil-cpp/absl/crc/internal/non_temporal_arm_intrinsics.h
+48b1e0f9462c528bd6cfc25a33fd5769e56db31e9c127546400a9108b8f55b91  vendor/abseil-cpp/absl/crc/internal/non_temporal_memcpy.h
+e6c9fae3270a6160b519287f84602615e6e7f9ddb177ab9d45818ea12046addb  vendor/abseil-cpp/absl/debugging/failure_signal_handler.h
+4ea9bd3d43e12c9fbfa9e0e171efc399aeab6c113202b9557f5b05cc1514db68  vendor/abseil-cpp/absl/debugging/internal/address_is_readable.h
+b142e706f86d35654a438fdf00c8c8b9731e167a26f9e398e386193e23fa6439  vendor/abseil-cpp/absl/debugging/internal/addresses.h
+370de5013d12bdef648fa55a2849836b13c04b2a1b79beb731b82b850a0cc00e  vendor/abseil-cpp/absl/debugging/internal/bounded_utf8_length_sequence.h
+89da7725ba113b765de3987542ae887cbc1374c85603bb4f4821d7451cfefeb2  vendor/abseil-cpp/absl/debugging/internal/decode_rust_punycode.h
+9fb0c694d02f262efb81f4f310a2f318a516cc7939e2da275e9070a50929135c  vendor/abseil-cpp/absl/debugging/internal/demangle.h
+4df0299d4a4072cee4c7a6695ed9806197b7e686e30bf138bdc2610767a77935  vendor/abseil-cpp/absl/debugging/internal/demangle_rust.h
+374c830e7053bfe499886bb9ffa5923e3d9b8f3fea203b648185928911da5c0f  vendor/abseil-cpp/absl/debugging/internal/elf_mem_image.h
+5c969f4acde3a2a3af49300be4300f6987b0704cd5c20d02b56ffe7bc99acd99  vendor/abseil-cpp/absl/debugging/internal/examine_stack.h
+86f9d80a3421975ba48a939d7bd2dfadd35b65c092eaa7ebda290cd956748a96  vendor/abseil-cpp/absl/debugging/internal/stack_consumption.h
+523ecf8816014df1f3816a4192942561e8ed487b6e4272d2d989b9b705f0673b  vendor/abseil-cpp/absl/debugging/internal/stacktrace_aarch64-inl.inc
+b52d7dc0cd95a4b61b38d54693a0cfea1d753a58f99c1bfb66d796e3b909463c  vendor/abseil-cpp/absl/debugging/internal/stacktrace_arm-inl.inc
+d5f83e0c6a24068c2b0801f2cd1cfa363898120fe2fbfee123934960f67b3848  vendor/abseil-cpp/absl/debugging/internal/stacktrace_config.h
+c26b9989a9cdf289ccffeef6fd45aa3b1a67a9e081605c6d8a75f253d3c1e6e9  vendor/abseil-cpp/absl/debugging/internal/stacktrace_emscripten-inl.inc
+c51712d766d9e1e3eac5380489185afe0aebd6ef812ce05899f6eb5a1fdb88e3  vendor/abseil-cpp/absl/debugging/internal/stacktrace_generic-inl.inc
+# Upstream d38452e1 baseline: df1dac69f431ff5e080308315fd91df3a9b929926d60d5db8808023ba38d2ada.
+# PPC32 musl uses embedded gregs; the glibc and PPC64 paths remain unchanged.
+326164d309baead8730413482124c3a3dd3cce5dfdf57efbd92d84514a512517  vendor/abseil-cpp/absl/debugging/internal/stacktrace_powerpc-inl.inc
+d2d16ddded25d303c00e6b9cbf6bc51e842dfbb205267ec137bf2f9e550fefb1  vendor/abseil-cpp/absl/debugging/internal/stacktrace_riscv-inl.inc
+13017918eb22fd70992087b0930cf2cd417a940f5c8e694514f4db41a2a9fb13  vendor/abseil-cpp/absl/debugging/internal/stacktrace_unimplemented-inl.inc
+cb4bf2a5a37cc4c09835743fc1eca9afece4420c48f1f7a54d442d242b8d2b92  vendor/abseil-cpp/absl/debugging/internal/stacktrace_win32-inl.inc
+48f5bb79f23b10d31c5da6c7205fa1431fd3fa6a5b31ca0c498a13b9e04a6b48  vendor/abseil-cpp/absl/debugging/internal/stacktrace_x86-inl.inc
+bd180c43bd015adbb506e8b2dfc63942621f5172c9e64e9bd62cfbf2fc7210c5  vendor/abseil-cpp/absl/debugging/internal/symbolize.h
+316187a99ca430f61a1e4b0e6d30525b1e16fdc4452b3a7108853738230ddd7d  vendor/abseil-cpp/absl/debugging/internal/utf8_for_code_point.h
+1db213a6ae00d3bc902c98bd9e6e0b7a59054ebf6b96bb7711dd0111475a8132  vendor/abseil-cpp/absl/debugging/internal/vdso_support.h
+d9d40910de75b55c831ed10bd708987817d7c093a8d6f743b863fe4af0e11a3a  vendor/abseil-cpp/absl/debugging/leak_check.h
+3d32161ab3ae88852d2a5d134bfb60d3c39be84a8a0c62705520259108d00b5e  vendor/abseil-cpp/absl/debugging/stacktrace.h
+064a7c7326359286aeba00e09d2870fc6df70d38b5bfc9555aa29dd992e78aff  vendor/abseil-cpp/absl/debugging/symbolize.h
+e66bf9f8202dea8872d7263a6365ba60aac538761d88fc2a7d65b24fa4ee154c  vendor/abseil-cpp/absl/debugging/symbolize_darwin.inc
+1925868557badf490c8924cc9bb887ffb99149f8a174820f0dfd93c9b74c2a35  vendor/abseil-cpp/absl/debugging/symbolize_elf.inc
+9d4527f2ed4f1d4886c2c1158520d7b5ba2046e8c0eaef9848c400696892b552  vendor/abseil-cpp/absl/debugging/symbolize_emscripten.inc
+af092eda27e5ff34cb8fddc9f6a0e85bb40843526d3dc63cf97e4f40843d2785  vendor/abseil-cpp/absl/debugging/symbolize_unimplemented.inc
+29dc8fe3fdbdb00b0a15524154de2c61d72aa02c6a177c1fe846a8d88e1cc52c  vendor/abseil-cpp/absl/debugging/symbolize_win32.inc
+cc8dfeb0039dd896841bb41cf9f4626e062b55f8979ebe6c94efa06d2da7f682  vendor/abseil-cpp/absl/flags/commandlineflag.h
+b5f612b0669529ec0c1c8173bccaa3bf782f48afe72b1cf9b7be2555a6698c46  vendor/abseil-cpp/absl/flags/config.h
+10f77af7b64cc1f7fe245a7a07eec0e3c72d00141e80232488a2c981c76f0680  vendor/abseil-cpp/absl/flags/declare.h
+3ccc2e0d1c9d9db3c2d893881e0cfef2df5376485fe8a8ba1a4522daaf9c7c91  vendor/abseil-cpp/absl/flags/flag.h
+54a9dc49c9bed48724ce3412a0f2e06774c7aa9669f867e16a0ed32697ec083d  vendor/abseil-cpp/absl/flags/internal/commandlineflag.h
+812bc9b0dc30eddf131ebdba4ace5a7e7290b48dd8590f8704531a11c0608dfe  vendor/abseil-cpp/absl/flags/internal/flag.h
+73e865599a5682a5e306b8642a0f115e2eb70c0d7030843242ca4b551e67c7fd  vendor/abseil-cpp/absl/flags/internal/parse.h
+0a801a124c7cc7c2911f108dfba18fc4b6e850bd7e556e21c3459971480b0a21  vendor/abseil-cpp/absl/flags/internal/path_util.h
+0d9f3ea7c5111eda0ba6f2084c454a712279823bc0f04090b6f7eacc7c34e9ea  vendor/abseil-cpp/absl/flags/internal/private_handle_accessor.h
+153348823903f08ebcc28446adf1efa73f92bd0a692dfba8efb03da83515e162  vendor/abseil-cpp/absl/flags/internal/program_name.h
+2f5c99587b65cabee2232dfe7cfac64717dc9641229fcccf7178d9eac894329a  vendor/abseil-cpp/absl/flags/internal/registry.h
+221a21b80973d5328f60eb9acd013a0b8c2842daeb8be087edb0f47ff1036118  vendor/abseil-cpp/absl/flags/internal/sequence_lock.h
+7c8deca7cc54139e75821d04231cc02e2cccc397a6f60ddd697240ec94c3f2ea  vendor/abseil-cpp/absl/flags/internal/usage.h
+62496203b99a747e572d94febc5cd64d6b68908b602651ad9783bbb1760c915e  vendor/abseil-cpp/absl/flags/marshalling.h
+b2a5ee2a9c1e87aea57a183f2e4440bb5599d2779c2121fa2dcb80589cd0d6a3  vendor/abseil-cpp/absl/flags/parse.h
+62eac245bf52e58b0f647749dbb30f79bd225e34ea5f8ec90fbbbb5bc4ed4596  vendor/abseil-cpp/absl/flags/reflection.h
+d7c82ac13b2daebd5ca12ad38254233dd1c496d9b8948f49fd45bc4b9b78c192  vendor/abseil-cpp/absl/flags/usage.h
+10179b4ccf3228231077b5aa56140775d58671d6be8cf23c69d09acf40a2d092  vendor/abseil-cpp/absl/flags/usage_config.h
+30e5d2abda2da0b4d4bd820c91159d5d3f7c437cae340a744521c35b7c0052e0  vendor/abseil-cpp/absl/functional/any_invocable.h
+8c5777957d57ba7d47560f1141bc16124eb9063c9e197c062be536559dfb560e  vendor/abseil-cpp/absl/functional/bind_front.h
+51f40157d90dab401c05fc021744934219557cae29db7fd5b70f1ce1a1b6a6d6  vendor/abseil-cpp/absl/functional/function_ref.h
+c0a371cc6d3563c22538689bd646424bebd1b4027108f17b60df93e6cc325c1d  vendor/abseil-cpp/absl/functional/internal/any_invocable.h
+7147fe9fc619641825b48150612074368325de45d9b5fb6d5c1f896f73d1d60f  vendor/abseil-cpp/absl/functional/internal/front_binder.h
+f4b2b00b15aff3690a593c0311d29890744f08d1c4171262a44d8da30cf21e61  vendor/abseil-cpp/absl/functional/internal/function_ref.h
+a56e3fab5d765889dfc073c24f284be9cc5e691aecc05f85928576b09db23150  vendor/abseil-cpp/absl/functional/overload.h
+32e9baa333c51bc677105849f26e34fbe4e99ac882ebe8f759fc75251d969125  vendor/abseil-cpp/absl/hash/hash.h
+77abe06dd6531b7b9add6b49a19f061028632395fbebff36ba663ca066873f52  vendor/abseil-cpp/absl/hash/hash_testing.h
+e2cb4e6364f594daa0264510989a1d7827e0af247b9a5be64dc6a7f9180d8be2  vendor/abseil-cpp/absl/hash/internal/city.h
+4caf885c90c977da17d65775bdbd8ca8bbc4581987685f1ead0589df24861376  vendor/abseil-cpp/absl/hash/internal/hash.h
+10cd467879c9fd27d4175e6431d2ec73ce20b86c75bb7617c95aab4e80d861e4  vendor/abseil-cpp/absl/hash/internal/hash_test.h
+3e447d2a295af640ad559568d02c2a241bdd663c8c64ff9d69ff310e325c14f2  vendor/abseil-cpp/absl/hash/internal/spy_hash_state.h
+5a6c4b178fb2245ba0d6de82d0c4c903f615b74f24fadc1b955d3dfa60e2c246  vendor/abseil-cpp/absl/hash/internal/weakly_mixed_integer.h
+ff8ff6bf90de07dd7d3d223b3fafa888c88c9efb9698e475e29f1aec5cd2c702  vendor/abseil-cpp/absl/log/absl_check.h
+7836b9ba7a9e470bd825ecfdb21b3fe7e3052877107a39762e438d291cd7966a  vendor/abseil-cpp/absl/log/absl_log.h
+88253408608b2c42bbb348f2c6739a336b82f7a595a3ec53ef733e0190022fe7  vendor/abseil-cpp/absl/log/absl_vlog_is_on.h
+0ddf544f993212a48c19040f4be94f608cfea4a8a42841c9312e671c10c61215  vendor/abseil-cpp/absl/log/check.h
+6c03e7046e8dc1a03e243d3e4623b9602f776374cdd9d051a1fd5591feed8502  vendor/abseil-cpp/absl/log/check_test_impl.inc
+35f4fce3e03dbd1e4b68f2e39edd2c2efc4140eb28fe26b434a9922d0a823e58  vendor/abseil-cpp/absl/log/die_if_null.h
+4b0a78ae70ff415692e3ffb9e01ce01bcb19fbe420cfe93f138652bd143928ed  vendor/abseil-cpp/absl/log/flags.h
+e7ad1ac9b6bbf8aeeed63ef3b80fe9db23b752e8b3a1b10c209feab85b5880ec  vendor/abseil-cpp/absl/log/globals.h
+ad7a048095985cb4bf30d2f35ebe97188942d28c9c191a606a4823495320c0d5  vendor/abseil-cpp/absl/log/initialize.h
+b4a5ec0af5e97cf57f91671aa894c780d96fc7443dff56aaae6477e895263967  vendor/abseil-cpp/absl/log/internal/append_truncated.h
+2878bed4d9ffc01f56f8780c1bb04b2ceb7769b34c7ec44c1782716d2b1b22a6  vendor/abseil-cpp/absl/log/internal/check_impl.h
+07d0ded2db38342377d5514972ec38b2f52b2ec8ec73b8e35b521d38606bd445  vendor/abseil-cpp/absl/log/internal/check_op.h
+# Upstream d38452e1 baseline: e4c12622cb1fc6ef8ca787ec09bb58f75543ce14a0f75dca5d55efa888c16c8f.
+# Hosted Linux Hexagon uses the existing unistd.h _exit declaration.
+ee002cb5b86814591560e97ac77c32759f9a668fe3a828f0d907ce53c72b5a16  vendor/abseil-cpp/absl/log/internal/conditions.h
+e5e06a681876c7d42d134f3d3e525313d32309bcce1f831a4705652b4ad98a52  vendor/abseil-cpp/absl/log/internal/config.h
+989adc1f367d04489b8a2ce712196d8db38959a81eb9a07ee6a9f60c1b530793  vendor/abseil-cpp/absl/log/internal/flags.h
+6365c55fa42d512ca2ee767a4504761a4a360fc3b4dd6de4c9ef326b3a7a574c  vendor/abseil-cpp/absl/log/internal/fnmatch.h
+6f276269f88874211605fcdcc5967184318e3dd008f4d7f1e126969b08bfdfe7  vendor/abseil-cpp/absl/log/internal/globals.h
+fe4a3a6d4b350e95a1675b46199d0217bf277819c402275214676f3815752ac1  vendor/abseil-cpp/absl/log/internal/log_format.h
+ac190093cb5c0ddda83ab4be4c3032415601c7094cec5d36bc66511afd920fcc  vendor/abseil-cpp/absl/log/internal/log_impl.h
+1151e54094d1c966ba3f97e0ee8258c0e45ff878c6b6aa90a66736954d1d901b  vendor/abseil-cpp/absl/log/internal/log_message.h
+8c016d1d619f0e2390122b2b3a796c037ebb657905f7898a895893a48d884d71  vendor/abseil-cpp/absl/log/internal/log_sink_set.h
+577210940b709666de6ea95f86d285cef80c1ae93b6ab956f798b11175ae117e  vendor/abseil-cpp/absl/log/internal/nullguard.h
+e9e5e906cd10d08572ac5719c307ee324e76e3c4d56b2381eaa211f5a5467a04  vendor/abseil-cpp/absl/log/internal/nullstream.h
+c4478378039534ab1a6312000f843cfe51c74a9187d8eea6649d5832e62c4879  vendor/abseil-cpp/absl/log/internal/proto.h
+eccbc51bd12d4075ad071c6621d689fbc7bc59a693eedd83854853b14483222a  vendor/abseil-cpp/absl/log/internal/strip.h
+9aabf9bc4c310e2e3cd5bc47f59cc33534d199a2d889471e34756a950b4b6abf  vendor/abseil-cpp/absl/log/internal/structured.h
+4630d63cfaecc6112ecbfe092a8dfc9c79ebeec56fd64bbdf69bcdaf7f2408b3  vendor/abseil-cpp/absl/log/internal/structured_proto.h
+d62b090fc35309c9fe33584a5c1367bc68127dc3d043d9d522e68bedc2e5d288  vendor/abseil-cpp/absl/log/internal/test_actions.h
+870517a1fc25bd7c379876d0919305a420cceb8f73ee26754d84ba67bde621c8  vendor/abseil-cpp/absl/log/internal/test_helpers.h
+a698401df8c8df462e08373056a6cb6a1de2de0ac292ae1d676e878ca83c4a20  vendor/abseil-cpp/absl/log/internal/test_matchers.h
+eac8eecd5801c5aab5cecd65b77516f5d22d62f20e4ed277935e2475d12d2a5a  vendor/abseil-cpp/absl/log/internal/vlog_config.h
+ff43956815217aff155e0a159e012e72b6871caa9e1173256ba50d2a1dbeac4e  vendor/abseil-cpp/absl/log/internal/voidify.h
+aef72f024fbef14f5f81ac64354388cb816d442246e1663466213253f9c8c076  vendor/abseil-cpp/absl/log/log.h
+855a617ae02d132704d506954854685e4e5a57e888ccf11c73b1ca8944f9f3be  vendor/abseil-cpp/absl/log/log_basic_test_impl.inc
+d810e66ed7de822080ca6e4a7eae8cab9eedaaca7ae5794c34b9c6ce9e2f978b  vendor/abseil-cpp/absl/log/log_entry.h
+ec965ecac10708f5ac7f79d724d89ec2abdf50e74b3d9f7197587a5f000886a9  vendor/abseil-cpp/absl/log/log_sink.h
+4ec7decff0556837328397dab9a4b128751b398a110ef95fe564144768089bef  vendor/abseil-cpp/absl/log/log_sink_registry.h
+e9c305b7357ca54b7d536120ca0e4380477ae1bd483fd6f47d8fe45a77288113  vendor/abseil-cpp/absl/log/log_streamer.h
+97c70febfeb28edaefd6dbd0fb11ae64e487d2159f9ede710a5cc79ed99f1cf5  vendor/abseil-cpp/absl/log/scoped_mock_log.h
+b40e6736fd18a3e572273d6d875a9b5b1093e2952331157ccb056810ffffa8e0  vendor/abseil-cpp/absl/log/structured.h
+b0f58d38e3266f1636c22e127234f70fb6838d724261379c67f8b2b3f1b96e2b  vendor/abseil-cpp/absl/log/vlog_is_on.h
+92e9ac99b4db0ed44b04b79ff509255c9fea321bda665f85e26fd2c13130ef0d  vendor/abseil-cpp/absl/memory/memory.h
+5dd13146de9e1ca0cf37e379af0ce4efd7ae1911c042281c39a5837d848c3e3a  vendor/abseil-cpp/absl/meta/type_traits.h
+c4b22990d346b8dd344cddc62b42d2e348793c59d603dededa2626ecc99c72ea  vendor/abseil-cpp/absl/numeric/bits.h
+447148279a375eeabd719c65a989d2004b94375b245ecfbef5184eca78929a75  vendor/abseil-cpp/absl/numeric/int128.h
+c21b660263888c8c14c15c25cbba12cf9e8838a690a6ccfaf2926fc32a076bc2  vendor/abseil-cpp/absl/numeric/int128_have_intrinsic.inc
+53ec9f08b012e1f60b84f0e79775e5a1a34a42066f08bfc624eaa7dd7f23c664  vendor/abseil-cpp/absl/numeric/int128_no_intrinsic.inc
+83ea6d1ba44c35a822abde1f161c9c23e7454d12049e9f6ad0694b85070cc76d  vendor/abseil-cpp/absl/numeric/internal/bits.h
+326dcfd6412610098ce5c4f174c083d4f361b0329a6aabbd394ff9abee972dcd  vendor/abseil-cpp/absl/numeric/internal/representation.h
+cedb7dc0450df66b405f7708d3d05615d8f3ae776e144119c4575d283448bc79  vendor/abseil-cpp/absl/profiling/hashtable.h
+dd76aa45169b6cc3ed121f3fd7909eeb106e1e3acb6cca8e218678d3d88f5ce8  vendor/abseil-cpp/absl/profiling/internal/exponential_biased.h
+b0b210f49a352f05c63b47b011a10dc6a171d4825a6297b734f661514d65831d  vendor/abseil-cpp/absl/profiling/internal/periodic_sampler.h
+ca9ca888efe4ebe7dd38a178fe714a18adc602cd5b283f6b3f3f92890f9bdce1  vendor/abseil-cpp/absl/profiling/internal/profile_builder.h
+540cb99e8907101a7c48c75845649f811c04b3d8302d4f5f4907810149835095  vendor/abseil-cpp/absl/profiling/internal/sample_recorder.h
+3030153e4bcae4884af8102a28ba3e55158f2fc20c45a700bf242356ecb166a0  vendor/abseil-cpp/absl/random/bernoulli_distribution.h
+b17d0a37935de32159e97a07d2a70c652f752a1fd93f5efe36b269f7c24fa759  vendor/abseil-cpp/absl/random/beta_distribution.h
+c402c60e2c4622b066f2493aad1d0813dc8ce1c35146da2c57277b5f938bf61a  vendor/abseil-cpp/absl/random/bit_gen_ref.h
+9256a6a5771bd835bc2561804b9086ae0e2d8397e489090898df2b6d3ff55a85  vendor/abseil-cpp/absl/random/discrete_distribution.h
+cd90424833120bc35e9a7a500a24e405fa66d52604e388090e967e861857977c  vendor/abseil-cpp/absl/random/distributions.h
+e80fbfd94ec3fc188dd5c4a39556dafac11a58e25271ab7d97800434bfbe07d1  vendor/abseil-cpp/absl/random/exponential_distribution.h
+abacdfa097756f2deac7491f6d7d2dc47a5581d455cde2949f36a5fcb6332a20  vendor/abseil-cpp/absl/random/gaussian_distribution.h
+01c2ba44c5e448abdd006782f7f08c5f42b19602b4e1520990bcc0aa16c8cc76  vendor/abseil-cpp/absl/random/internal/chi_square.h
+926ef5117c991e253ab00fa4db3e3a89777eb0280466632599d7ce90f2c2f321  vendor/abseil-cpp/absl/random/internal/distribution_caller.h
+6f318490f4b3203e78b5776ffe702d65e7794f80d8f3a2b230577d483ded2e95  vendor/abseil-cpp/absl/random/internal/distribution_test_util.h
+89a95400e8d531400030bee8effb83515d9b6099c4470d34e300ddb6b18eaed6  vendor/abseil-cpp/absl/random/internal/entropy_pool.h
+5af8881859c68359c1337779c393618a616966e3cde6f8623fdb69503991958f  vendor/abseil-cpp/absl/random/internal/explicit_seed_seq.h
+aecf19128ab0ef0587741b9e53a5e3ad6bc79f55a9e754b2a36ef274c05c3e74  vendor/abseil-cpp/absl/random/internal/fast_uniform_bits.h
+e7b6ddd79faa6905b14336fcddd7d48ba0c520912253f1babfe408d269ad0665  vendor/abseil-cpp/absl/random/internal/fastmath.h
+62c556062ef1cc2e9051e1cfd7f6687e018495ca65d375242d73934b17be0663  vendor/abseil-cpp/absl/random/internal/generate_real.h
+2b928285a08675e0c7aa96124d284e7aa9af6b97cdd89c91df8f15be6768861c  vendor/abseil-cpp/absl/random/internal/iostream_state_saver.h
+de25c16f874f8ae14ff6871f143329384b8c57ef51a408d55dd33cdc13667a65  vendor/abseil-cpp/absl/random/internal/mock_helpers.h
+a698579d3785f49a34318f63eaef9d8fba9cd4dfa3e63ba3e8811062cd88b8d8  vendor/abseil-cpp/absl/random/internal/mock_overload_set.h
+b697d2514d8ca8a2c87ceefc9ed89aee77e4ebf958b9fab45305a5557e9d8e81  vendor/abseil-cpp/absl/random/internal/mock_validators.h
+3039ea5e649e58466ea2376053a12aaf0f8651e9a65159ed49a8adf95b83175d  vendor/abseil-cpp/absl/random/internal/nanobenchmark.h
+1bc39facab11d206a7c5b55cc526bd813a10328b6f2443c25504f9603e61e3df  vendor/abseil-cpp/absl/random/internal/nonsecure_base.h
+6f08efe671de040a8a0be91ed0a627751e2a2ffd500649be1eec4d2af08a998f  vendor/abseil-cpp/absl/random/internal/pcg_engine.h
+def517d30cfeca96e85add804ff264aa52fb3864186dbda9685e7a188024baf5  vendor/abseil-cpp/absl/random/internal/platform.h
+e7e8c10d65e2b55322e2352b1fcaabf429dccc1607a8226bd72505658e9d060e  vendor/abseil-cpp/absl/random/internal/randen.h
+27453979011b431f77062feb816c903f6f10ed43739033ca031cf762a6ce3da0  vendor/abseil-cpp/absl/random/internal/randen_detect.h
+a94f288a5a500ecef902eb81d20dd0cc491d611746144cf35e319c9c99fd8bf1  vendor/abseil-cpp/absl/random/internal/randen_engine.h
+58f36c80b15416673e50e888259c243a0eb2d9dbce16474d44270ee73fe8389b  vendor/abseil-cpp/absl/random/internal/randen_hwaes.h
+4ca3d2e0bb3f9d1f95d080b1b0144cf94d4ba3d0075c41fe33493e4a67b9faa9  vendor/abseil-cpp/absl/random/internal/randen_slow.h
+d778935bc114e5f192a79767b7df7efe6ed5957f5c9a4db3705e6fe183fa27dc  vendor/abseil-cpp/absl/random/internal/randen_traits.h
+88d121656af80122c2cbb0912e18387e2a51526af4b3168a7e93d25bf4f82c74  vendor/abseil-cpp/absl/random/internal/salted_seed_seq.h
+691a78ed6799bf7778ff3bd6f18963b9aee817de99a1628bb723fcfc08c312f8  vendor/abseil-cpp/absl/random/internal/seed_material.h
+80382e0369947ece1610cd89ee4cac6ea1e1f465bfeb1ba993dfdd99b3f75b7c  vendor/abseil-cpp/absl/random/internal/sequence_urbg.h
+ea75fb4a6d107f47169d0a13e4ec06c705b9eac62fc3a1e52e131621d1b6e7c1  vendor/abseil-cpp/absl/random/internal/traits.h
+b7e8fc8ac331e0c8caf48c34ad087f028445db767ff42e694ef7eb5216057b4e  vendor/abseil-cpp/absl/random/internal/uniform_helper.h
+83909b2dc2788f2397c8f5767e48bc4562aa49f6f50d4f02b30a4f6b2dbe0b05  vendor/abseil-cpp/absl/random/internal/wide_multiply.h
+29774e90f3a92499465a3fe935e939d19082f2f2fe612efbca6b8700ac9a7558  vendor/abseil-cpp/absl/random/log_uniform_int_distribution.h
+020a8a373c9dfc066913a4d9559767ba356028d46c5c6e3647433611ad56837a  vendor/abseil-cpp/absl/random/mock_distributions.h
+7446a494852b4a2fac09cbaee7c2acac471026e3dd650ceb29e0f6ab695c29fa  vendor/abseil-cpp/absl/random/mocking_bit_gen.h
+0bc98d02399439e45c63683332122bc0d3d36676ffe11e268b159d4181e17f25  vendor/abseil-cpp/absl/random/poisson_distribution.h
+ad5bda54d42f23c7aa7dd37811af62ceeed250dfa959c2c4cbfaa362dc75e9a2  vendor/abseil-cpp/absl/random/random.h
+e0c78204e20386658ea523a100c5acd3a4cabaf7bfc152a0fc51a74fac9a01ce  vendor/abseil-cpp/absl/random/seed_gen_exception.h
+b1ac166e80795bb3cde022940067b5f214a5f9b6903aec32139cd0476cac0096  vendor/abseil-cpp/absl/random/seed_sequences.h
+c5b798a59387320f8906a9d97876bb5197f4ef7ba4b98aedc1cd177e519f2558  vendor/abseil-cpp/absl/random/uniform_int_distribution.h
+19f213340a90b51ea4f25c965ee1f3955d6ff624edf2dc75dc89a9fe82699010  vendor/abseil-cpp/absl/random/uniform_real_distribution.h
+516d49d83a87995bc33bc980a09b2738b2a6fe722af9c022417ce52077d11462  vendor/abseil-cpp/absl/random/zipf_distribution.h
+cabfdb54a080cc5f214d0fe8c76bfdc974729a167c06376bccadd40977657738  vendor/abseil-cpp/absl/status/internal/status_internal.h
+47213bcb71dfaa17a5d1bcd1387672a8a0826167ddd0d2be0c9237dd80c346b0  vendor/abseil-cpp/absl/status/internal/status_matchers.h
+93febd5d2b52f66456fd62b5316eec3843c3055e5bc4a1761840804f45c7e240  vendor/abseil-cpp/absl/status/internal/statusor_internal.h
+903d1f6f1fcdf42b5e276d5d97a1a033865f383499a636a528ab39d81cc40219  vendor/abseil-cpp/absl/status/status.h
+f0bbe46da2bb7cee13c82d38567e37dae00da31c0f7b8f5b1b6179332ff39bfc  vendor/abseil-cpp/absl/status/status_matchers.h
+d69f09ab1c3aef0ab9ac8bcb1e554e84a8ba35a33134f7c09db73028c3ff5434  vendor/abseil-cpp/absl/status/status_payload_printer.h
+8420d48d7c331305f4c0c6b91ed60a2d57bed57ebb9fda3be9226671d647dd31  vendor/abseil-cpp/absl/status/statusor.h
+35019af997f50b2a93bbd821d363b3eab8eebdf8de1e258b74f94048e60f3f28  vendor/abseil-cpp/absl/strings/ascii.h
+f20898051c4402fd374ebac0599eb097f7922646899a684e5c4582eda187f5da  vendor/abseil-cpp/absl/strings/charconv.h
+e7d3650f98fa2da8ab01c384932cd831db138b1ef653d510d3e0f08a6baa75d9  vendor/abseil-cpp/absl/strings/charset.h
+8667a794814dd7e85abe3251472ee1445b69389128112541db6f4b9a640daac0  vendor/abseil-cpp/absl/strings/cord.h
+3dd5dc0cd1aff4e433878042b1d5442cea7b8390240085005323b54c75809d76  vendor/abseil-cpp/absl/strings/cord_analysis.h
+c322a7b6529f8c7f36e0da03eff34705deb17f66562d27832544b29061cf6916  vendor/abseil-cpp/absl/strings/cord_buffer.h
+4d47088c372fd84ba19f43f8e7a8f6f208680c320a3c49ee5d0b331312c1aa7f  vendor/abseil-cpp/absl/strings/cord_test_helpers.h
+83ebb6a9d6546ab07f8fb8fca3831d8c6133bec7dd6dd72cb5103bba38a12e17  vendor/abseil-cpp/absl/strings/cordz_test_helpers.h
+72d4c4c199b002d42447872b8e7ec629b45011869a1d8a50711c2545f3d95828  vendor/abseil-cpp/absl/strings/escaping.h
+9c385e0a0f92efa6ac0445528fdd35966ff5dcf0efccee3cfe8e7ee4299beb58  vendor/abseil-cpp/absl/strings/has_absl_stringify.h
+8ce0a95a2a542a59df1e67e90c8fdbf2d7f77bbcecb2526d6a9238d38bec098d  vendor/abseil-cpp/absl/strings/has_ostream_operator.h
+b83f1f29e2cc2a2e024f8252ea1cbad917d4452b57aa2d26fdaca665d45455a3  vendor/abseil-cpp/absl/strings/internal/charconv_bigint.h
+86ef58d2f2bc02ef3fd1de7edf26ffa1ab3d33a1255ebeda06a6bb15053f5a6d  vendor/abseil-cpp/absl/strings/internal/charconv_parse.h
+a702428c024dea0917dfd744a744282716c72a17432418f1a7e5d6ed8910ec08  vendor/abseil-cpp/absl/strings/internal/cord_data_edge.h
+03a737e7eaa26ce31a1ff20fde6ef01d318e818334869e2727f7844a94a10338  vendor/abseil-cpp/absl/strings/internal/cord_internal.h
+8fedd566a009ca2c0f37ad3de24066db8a8c7173e945387322b0a328662d1b07  vendor/abseil-cpp/absl/strings/internal/cord_rep_btree.h
+dc1b79a7b4a8dc5c21c46b442473af4e35898016e2822a6a7e5a738601d0bfc1  vendor/abseil-cpp/absl/strings/internal/cord_rep_btree_navigator.h
+913265d50edfe74bd6ff3202d73fac4d93dc813a8c3a1262d6064626cd8b98c4  vendor/abseil-cpp/absl/strings/internal/cord_rep_btree_reader.h
+b330e540c33fbaa19fcd63802d75fc45dde5ab63bb6a4be82248e2937955f0c5  vendor/abseil-cpp/absl/strings/internal/cord_rep_consume.h
+abf52010f2e23ca0ba2451a52587c9c7782f56c8cfcb6bc47cca78e7379632eb  vendor/abseil-cpp/absl/strings/internal/cord_rep_crc.h
+edb57250ddc315c9b7a9f2e213f32b3f6d82dc250630d87fc771c696654c2292  vendor/abseil-cpp/absl/strings/internal/cord_rep_flat.h
+88f39984736fc77d841422f7293a29753020fb730ece75256967f6205125d524  vendor/abseil-cpp/absl/strings/internal/cord_rep_test_util.h
+c66c913ca89fcfa0bdfee706edfde6f435eb617b216835cd0e5f548aca075af7  vendor/abseil-cpp/absl/strings/internal/cordz_functions.h
+8cd9f156b2e44f9e95548bc015c6e1e30a0e1e9f02658a27f785ad4f5de49b9d  vendor/abseil-cpp/absl/strings/internal/cordz_handle.h
+54382dcd41eca797b95181e3638df34cdd1ac6310f910f95935d25829daecd3c  vendor/abseil-cpp/absl/strings/internal/cordz_info.h
+9290fe61b25bd56fb6ada33bc00251e37ef15dca2f10d22e387de38f06bde60c  vendor/abseil-cpp/absl/strings/internal/cordz_sample_token.h
+4108fc55b83dcce1d525e1135a946d4488a6be4d2399c01f38da05a80ecfcd21  vendor/abseil-cpp/absl/strings/internal/cordz_statistics.h
+65439da7de0ca3c79e89eeb2e890e4b12db97037d6059738d05533cca68fabbe  vendor/abseil-cpp/absl/strings/internal/cordz_update_scope.h
+94562ed349ae1d48e0eb422d6462cda32a782bd355fcb1594453c4fd84d69af3  vendor/abseil-cpp/absl/strings/internal/cordz_update_tracker.h
+7a94c7e21bb33a95d6f0fad11468b1586ea15d2fdbc42c3e0c933272d1d28c63  vendor/abseil-cpp/absl/strings/internal/damerau_levenshtein_distance.h
+c6b7619a28cb66147f26c993c7ee2a01a856b5c129581b288b9a23514105e475  vendor/abseil-cpp/absl/strings/internal/escaping.h
+c6a1c2eefa12d8a616c8c7ce4b9762c8e7f5aff13ba275e099c767db151bc352  vendor/abseil-cpp/absl/strings/internal/escaping_test_common.h
+631380b2819bf3ce162dcc27420eae256851b3609c29a3f3356d9481e75e4547  vendor/abseil-cpp/absl/strings/internal/memutil.h
+eefc1b010da124c430c6850c316352724865e60dc10cf5a390e1365ebd0e483f  vendor/abseil-cpp/absl/strings/internal/numbers_test_common.h
+a1d4ca055394e9e57b69b7a709a6d6bf3db4ad3580747ac3dc9cf4daf6835694  vendor/abseil-cpp/absl/strings/internal/ostringstream.h
+f93859f1a2cc9d1cc354211e9bdbc8aa87a93188bfcfd6e416567b554ac4659a  vendor/abseil-cpp/absl/strings/internal/pow10_helper.h
+8f49086ff3834bd14931c2aa4421ef70f5fa57e5e4c306d37f2d869e2d715836  vendor/abseil-cpp/absl/strings/internal/resize_uninitialized.h
+b02693d3bacd3200dbd6d05e0ba1b32214cf3b45c719544b88cab22f3f0bd0f0  vendor/abseil-cpp/absl/strings/internal/stl_type_traits.h
+59aab2f06e122ce38f009f516d3d1bd9e3a7af4658e20640818ecbd08541bf0f  vendor/abseil-cpp/absl/strings/internal/str_format/arg.h
+327b87fe2af9965f57812e8ef7aa1fcdff6dc3b11adf42c1c459f5836e29d391  vendor/abseil-cpp/absl/strings/internal/str_format/bind.h
+5212731c07bd7757d5f2ae1d3b9c590430ecad7555bd978ad4f4e79a0683a014  vendor/abseil-cpp/absl/strings/internal/str_format/checker.h
+22be968eef75bffe59f3c6ee629b7910fa8039768c39fb47960b4090eda0b6e9  vendor/abseil-cpp/absl/strings/internal/str_format/constexpr_parser.h
+e6d59a10dd31968bee26d48f52e1fd5a7bbe3ec0b39e8a9a3e9132fc62985704  vendor/abseil-cpp/absl/strings/internal/str_format/extension.h
+146fc41464e95acc7ace4f73c01502b175cdbe3ebdd3e19e6634af4664b52cb0  vendor/abseil-cpp/absl/strings/internal/str_format/float_conversion.h
+a8c72004a2280585d696dbd5a5f60954fd7b201b87b90723e930188936fb465c  vendor/abseil-cpp/absl/strings/internal/str_format/output.h
+e3970242669350c2ba43836dbf616e173a9427b16b8b8dc7749319793f05f4be  vendor/abseil-cpp/absl/strings/internal/str_format/parser.h
+bd2b261cacd31a6a8b648b39478d5e9cb8f6734ef001552be0ce5a8f580bf690  vendor/abseil-cpp/absl/strings/internal/str_join_internal.h
+13eda46a645faec4d52678b40e78f89a37883abc0a236dce12d8384955c20975  vendor/abseil-cpp/absl/strings/internal/str_split_internal.h
+c10000a12e17d17b1d2afa69e85eaecae6ec7d3da8d90ce1815f88b2c98ec46a  vendor/abseil-cpp/absl/strings/internal/string_constant.h
+585bf8dc88079babb7aeca873df8c61cbbd59ddd5bc5ec8354d8a1fef445696f  vendor/abseil-cpp/absl/strings/internal/stringify_sink.h
+b2b826651d76c3db9026613746ea77bc5f2164b64535e996786d26fdfab2edbf  vendor/abseil-cpp/absl/strings/internal/utf8.h
+e05614f1502c557f640f3bdef160051b6584485dd57785b7832d628c7af86adf  vendor/abseil-cpp/absl/strings/match.h
+fa1df761baa8cb3786f10894acccd90c293e0db3036c2d8ff0d459a246d37230  vendor/abseil-cpp/absl/strings/numbers.h
+4b2354a406c6bd04f65448c99dd9774885e784763942e82261f9bfba038c522a  vendor/abseil-cpp/absl/strings/str_cat.h
+fcd54077f7487f3398952b6137319ee181b790f0bf1fc518c25dd1d993f93610  vendor/abseil-cpp/absl/strings/str_format.h
+c244404adad0cd972f81c8075b70beeffe87351bf76fbaa5be280241116af9ed  vendor/abseil-cpp/absl/strings/str_join.h
+e6726a5c68c6aee0b6d4daa33b2df3da127052a4bce4f4aecab4352ec6b4ca3f  vendor/abseil-cpp/absl/strings/str_replace.h
+99747881a29a4aa0a0d7a43cb1ebbd0d3f16e3418de46840f7d98a9a2cd226e7  vendor/abseil-cpp/absl/strings/str_split.h
+177edefc35152e738a3b7f4dc53897f7077a7502324d78bb5b7f61a55dacc5ab  vendor/abseil-cpp/absl/strings/string_view.h
+afd88584ed73ee02e4a2d60e7ab2bdec55d0994b8f59b67cca0ba40ae2c49828  vendor/abseil-cpp/absl/strings/strip.h
+fe0938644c822ebfc855abb086fbf020e207515735b2f2e1a801374b477ee4ed  vendor/abseil-cpp/absl/strings/substitute.h
+b2eb565ddec1ea176e5f0cd235daabe4f1a961d30646c86df493a9332234b0f3  vendor/abseil-cpp/absl/synchronization/barrier.h
+3f4f0b61c6ac7a89b8be157b42f0aa92edd158319ff0a55aaf5e9dbee7fee43b  vendor/abseil-cpp/absl/synchronization/blocking_counter.h
+97d4b58dc2fc67ffb3388380499f421bbbea070d1d9f92c28a7d60fdb51827b3  vendor/abseil-cpp/absl/synchronization/internal/create_thread_identity.h
+a3e524c2c0d05d8aadbab536cd35867982e168139613d191e8b1c364c3d4840e  vendor/abseil-cpp/absl/synchronization/internal/futex.h
+f8d0390461ff3ef1a98866b75979f826ebe00733d4b42af598fa5e90e4e1edc5  vendor/abseil-cpp/absl/synchronization/internal/futex_waiter.h
+61f0f96e9507d3b3ec12a68eef6a9959ca5b991877e4e22733229fcfd072034f  vendor/abseil-cpp/absl/synchronization/internal/graphcycles.h
+157e8288a2675431a39486876c2295ac66a12f958f0c785b7fc19485f2c1e426  vendor/abseil-cpp/absl/synchronization/internal/kernel_timeout.h
+10725664afc1d045cb521263d46c1654dc64c91d2b15e4f1e2db18707d25be93  vendor/abseil-cpp/absl/synchronization/internal/per_thread_sem.h
+b3ec00074fd91bcedfe3933f2e0de81f6e42f63b313bc5aee914b9cdf2f61a72  vendor/abseil-cpp/absl/synchronization/internal/pthread_waiter.h
+30c74d0ddf14d2c777677be0d699505f5acdec83c2853b2412034065fec1fa73  vendor/abseil-cpp/absl/synchronization/internal/sem_waiter.h
+e34c5826c09d1f8270c8d9b1909949f49fcb7c97f710702ca90de6143a02d6d4  vendor/abseil-cpp/absl/synchronization/internal/stdcpp_waiter.h
+6106d6ad6873f22d2c9fcd4cf76f6436fd34905a4197df52e02b2d76a98e5b28  vendor/abseil-cpp/absl/synchronization/internal/thread_pool.h
+6ad9c13fdd0972908e01fb394c002cd17e1b6afbf6248c454938f82cf4945394  vendor/abseil-cpp/absl/synchronization/internal/waiter.h
+f05306cac36fdeec214d57b894817534f35a8fb2f7591fd7ac49c920219c5595  vendor/abseil-cpp/absl/synchronization/internal/waiter_base.h
+744d09a720e6d3360ce70d0419b0dea725befcbed9e86edc7cbf435fcd7ba204  vendor/abseil-cpp/absl/synchronization/internal/win32_waiter.h
+d9cad27e464965a8c85a69e15846884cb6a8b4d0aae6640451318264c5d07b19  vendor/abseil-cpp/absl/synchronization/mutex.h
+6c93d13c465ab60e9ac48e20c1e5a1a776b49d9d3f8c737570f79307a3d95981  vendor/abseil-cpp/absl/synchronization/notification.h
+e76d12f5d9a14c8447d439e47e8239446a01d82fa7000f930b372e46d5ca2417  vendor/abseil-cpp/absl/time/civil_time.h
+9cfc354efc18837f4f7b02a8f289465e7fd1f52e9f6230faeb3ade872d9b38fc  vendor/abseil-cpp/absl/time/clock.h
+68f9179c20d49aff1a1e7f78476b83151e927c2a6ca1191fdf0a48345a156fe2  vendor/abseil-cpp/absl/time/internal/cctz/include/cctz/civil_time.h
+32f4a93948a852cf1be123ac82f85d4b55f215bcfe4461b1bb1dde803789dff0  vendor/abseil-cpp/absl/time/internal/cctz/include/cctz/civil_time_detail.h
+64643d54ac307640b17937d108012577e2153dae141092f17078001563867565  vendor/abseil-cpp/absl/time/internal/cctz/include/cctz/time_zone.h
+7cce7b7c836de8f66679eeb05b965377f75ed58c1b1d937aea197f2e53d84d3c  vendor/abseil-cpp/absl/time/internal/cctz/include/cctz/zone_info_source.h
+665c8803122913d5dec78fdefa25317943ea809b9bb33ecfb8072404b31d76e7  vendor/abseil-cpp/absl/time/internal/cctz/src/test_time_zone_names.h
+486a7714d6034b8932c4feaffd6a03dc5c05b458ee32a92ee628b52fa6331866  vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_fixed.h
+c9c993a8e799f79f3b5564faf6bcd54549f68dfe57c2e6dba6d605de44edafcc  vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_if.h
+731e44aa9c4e29142a71836ee290a31778d72b93ca60298ffc1cdae5dee3dd6d  vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_impl.h
+db6597f2dbf4562f610bc39ee1012ad6caf3992b233c34143734ca1ed3352171  vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_info.h
+31bba7b9ee7626acc04e60f1390546c25455535ad13fcd896556a232c46d87ed  vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_libc.h
+e2b3d809475fd9dcc1d5dd331ec054836e521f5c052f8f3a0692910593b52a6d  vendor/abseil-cpp/absl/time/internal/cctz/src/time_zone_posix.h
+e3c0262044c3b3abd222319f68a2b3f2beb8610fa90e5f97b89860490250e451  vendor/abseil-cpp/absl/time/internal/cctz/src/tzfile.h
+41235caf1f0c0c65d97c91a65eb636d42894afc6742daa98ee14db8065066706  vendor/abseil-cpp/absl/time/internal/get_current_time_chrono.inc
+b35ab7624018e9c41a69168bc3254ee9cbb16164a060ff4c08bc7f41aa0112c4  vendor/abseil-cpp/absl/time/internal/get_current_time_posix.inc
+1f4d2db2707bb94a849a301f5cd3037a4e95ab8d7e89d2cd3bf28db7c13a7fd8  vendor/abseil-cpp/absl/time/internal/test_util.h
+71b69477b788c417a778ce4edebba8e09607a817c7bb05f5c07e01042d163a5f  vendor/abseil-cpp/absl/time/time.h
+7017d9992c1f8601ed46df2936d91f3f3a12da0cc094fe2cabed0cf798fec0b9  vendor/abseil-cpp/absl/types/any.h
+cd370e78dd2addbbd867400189d6a36d4f1866185314b690e6d2707984c9d8f6  vendor/abseil-cpp/absl/types/compare.h
+60baa1039fce223d3d144147780db3ef97742838a79cb70b61af8b8e8ce61e14  vendor/abseil-cpp/absl/types/internal/span.h
+da1141eca6db66739191fb8a1c542347db78553c13ee884be6f61f155e79fb79  vendor/abseil-cpp/absl/types/optional.h
+e046f29278e283674660add073cb28b0c9bced424733c43f5057b523b133ee12  vendor/abseil-cpp/absl/types/span.h
+10af88c42f94e2e66846383f090a02aefa7349e510b7b0a1c6e8e6eeaa4689cd  vendor/abseil-cpp/absl/types/variant.h
+350b98f17d3589f946d88788000d064dd144aaea3c7cc11a65f4003ecf66ea46  vendor/abseil-cpp/absl/utility/utility.h
+
+# E. licence, notice and dependency/build records of both upstreams
+505840c5c64b246c198e7d9fb9cf00352074880a70da07ca372b3c3740a55303  .clang-format
+3a9be2faf71f1593af637f93ce7067785cbe72d532d474d9dfceda5aa9619075  AUTHORS
+5364f13ea050e26e9ca1e9a75129f5ead970a3051544521cb8ab3089a4dfbe71  CMakeLists.txt
+c9b585cd129f674151d80258871ab354e02037f47318476a5e0f6a4799064aeb  CONTRIBUTING.md
+0c4b12500ffc70cf1aa25f860e69f8cdd1c751bb05c1c1ed71500042635a4650  CONTRIBUTORS
+b0bc289ffc549525b62acf4d13266a373e256c34c196d95ef71e59b363790a2f  Config.cmake.in
+cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  LICENSE
+5b5bb92c704c1efa680a62fedcbda2933355613d7d694190383773e49e5c1913  NOTICE
+d91df72a132d05348e17a32bd0443c7325c701c79c4aa9e766d74b564a609ce1  README.md
+5bf59c6870bbd003140150e0a1730c7a729e6cb1e21913ca59c932f612dbd17a  pyproject.toml
+60c607616483b60e25e99694689b28d426ac7a50d1ab39370b1df85afebb3ad5  setup.py
+cd25bfb8127eecadfc680968435b58abde752791866cdd80e4030bfac9e39cfa  vendor/abseil-cpp/.clang-format
+1fd39030c119b4c97014f59e0ad0ed65f23475bbdf55a52740f31eb82b34b4ee  vendor/abseil-cpp/AUTHORS
+c41994052d003c83b9e9d978987b807caaedd3c41cad3d11e5f19374bc86669e  vendor/abseil-cpp/BUILD.bazel
+0db7f087b16d33cfe6866002f9699a3b072697994fd640e1b68df9667cf31fc0  vendor/abseil-cpp/CMakeLists.txt
+c1a218184ddb0ae77452ce397a14fa265480c6fca5853921fa87cd751ffde70c  vendor/abseil-cpp/CONTRIBUTING.md
+4b47649fd284423abeb01672982587065fa24fcadb2edd7d1c36609342baeeeb  vendor/abseil-cpp/FAQ.md
+c79a7fea0e3cac04cd43f20e7b648e5a0ff8fa5344e644b0ee09ca1162b62747  vendor/abseil-cpp/LICENSE
+51f2312901470cdab0dbdf3b88c40cd21c62a7ed58a3de45b365ddc5b11bcab2  vendor/abseil-cpp/MODULE.bazel
+f232217ae9edf2ab6a541a28eff50cfe05303c2b4756fff95cca72eccbc3b898  vendor/abseil-cpp/PrivacyInfo.xcprivacy
+ef96eba1d2e35b51a36ddd9cff4b1eac25a9702341c00ef0c19d601a37516d10  vendor/abseil-cpp/README.md
+1d9a1c2e3e3d684aa0ea0f959e6d188dd9bf4ead45423409f8ac2ad325b1a52d  vendor/abseil-cpp/UPGRADES.md
+b02ac416ba910fd2b5561e91d4f1c387955f9140e6dfe123fba10a1bfa25dc13  vendor/abseil-cpp/conanfile.py
+7746d770372c927a8d91d5ef506f4378809978b63e1c187236b14b8edc6bcc78  vendor/abseil-cpp/create_lts.py
+
+# F. s2geometry build definitions that decide what is compiled (src/**/BUILD.bazel, MODULE.bazel, .bazelrc)
+62a9d2813221e2334ab10901a6551df05e644e6f695baa06120e9747d5f884bb  src/.bazelrc
+6063bf3608cd99e21e2bf911e186e99a0167c13e0346037fb08e644186f5b5dc  src/BUILD.bazel
+389f772d85236c11a83a3340bb7b196ec8981916304426ea0a6bd32429693e56  src/MODULE.bazel
+6cb4f422ec471f7a90ca386f40b85ec92f86f88bbeeef9e7f7107e1c603613b9  src/python/BUILD.bazel
+5c2eba2d9f8609930e1948f971cd6f3ee1fee077a58e8aa409b64e0367772590  src/s2/base/BUILD.bazel
+76e0415e814c3a11f9e3966a249e1157863c5e5fe797f942582d761a5153b4c1  src/s2/testing/BUILD.bazel
+bd70f0da2db0d6f8454ef0402329bb11bb72c2505e81ea759bf256d845949e23  src/s2/util/bitmap/BUILD.bazel
+04d83dd757d1fdeb11d0e61b980618e0895b7728d08bd207cb802cb9f9b81afd  src/s2/util/bits/BUILD.bazel
+84653205c8c52d4c87f7105e365fa9c3934b385624f1950a793a26a7d87bbd0a  src/s2/util/coding/BUILD.bazel
+d8894ce56e4123f4aacc02c9cba0d873b36eaf9f393264f586d0569e9db54c1d  src/s2/util/endian/BUILD.bazel
+4c76da2f1fc22bbdbf18cd2aa191b32abba8b8c6ccf06f44940c21374ed28f67  src/s2/util/gtl/BUILD.bazel
+9f31b2efd1147e4f03158cbcafcb93a02d6d9a8a2bb2bce79771d0398b458e4f  src/s2/util/hash/BUILD.bazel
+3726483e43056cf1bccfedfe95da3f0dcbbf727e1252bb9834a82e1ee46888a8  src/s2/util/math/BUILD.bazel
+f7153367ef4168339eeacb1870b735c952fe28fcb32e7ced05cc1dfde5da8816  src/s2/util/math/exactfloat/BUILD.bazel
+64095b6fbaf9b1548be13657d751140ff1dda9ea840e68580778047ecafcf1b9  src/s2/util/random/BUILD.bazel
+018804cf5b9eb9d5c8ec5f9c06508f2bf0581a6d2c58cb98e7a1fd2306406198  src/s2/util/task/BUILD.bazel
+71d5d146508cd6002862d7883b3ec0e5eed28b0fdf93374223394e78f02b9b86  src/s2/util/units/BUILD.bazel
+
+# G. Abseil build definitions that decide the SRCS and copts this package enumerates (absl/**/CMakeLists.txt, absl/**/BUILD.bazel, absl/copts/**)
+ba467ad0488e3b1ca2916f147589ee58524b367f8783423da85cfac37dd5561a  vendor/abseil-cpp/absl/BUILD.bazel
+f172b6bd00b0a37668d6a163799857af0989c3f110f6dd23e18343ea606e0d48  vendor/abseil-cpp/absl/CMakeLists.txt
+887f781a8a25e56db11c7a4f02da1d2b07acdfe80e82a01eb398453208901bb6  vendor/abseil-cpp/absl/algorithm/BUILD.bazel
+97c7595fe466164b7030ebb06afbc235bb6c765b5b2f6fee012c79b3b0883585  vendor/abseil-cpp/absl/algorithm/CMakeLists.txt
+579da458799e4c4bfa9e51824fc9a3dd05beff166febf3bf4cd10d36b1784443  vendor/abseil-cpp/absl/base/BUILD.bazel
+1ae76fec302a2a3166d67d0d7505c5b3f2cbb1c31ff4b829ca8fb411b4365a96  vendor/abseil-cpp/absl/base/CMakeLists.txt
+29a0d2b10db35899f02f9edadabf9e40404500d9a5a86eb719e5d8330cc3b5e7  vendor/abseil-cpp/absl/cleanup/BUILD.bazel
+aca892a889b651e072a7b902dff0176ac190f39b5adc0666338bee5db4cc0ea4  vendor/abseil-cpp/absl/cleanup/CMakeLists.txt
+356447e80614510e39fe9fbfdf741ccdb53228aceac549184fdbc83d5ebb8a85  vendor/abseil-cpp/absl/container/BUILD.bazel
+e1bc048b6e316a691bd65beba6cb135f92c7782c93475516140ba211419572e4  vendor/abseil-cpp/absl/container/CMakeLists.txt
+68295bccf13dae63d3342f52699eb520e0733276fb7ff6c1289698c575bb6708  vendor/abseil-cpp/absl/copts/AbseilConfigureCopts.cmake
+e4c763b2fca32cd10f05d957091ca2dca54fec7dc782f014595adbdbb8e92069  vendor/abseil-cpp/absl/copts/GENERATED_AbseilCopts.cmake
+df0844db9635fbece774c60bd3ee5f34c503a456c09c0069e75a6d80439525ab  vendor/abseil-cpp/absl/copts/GENERATED_copts.bzl
+7d65455b551eaa8ac85d311062147e09e2eac9a6ae7e6fd0b2b987ac6fd7c2f1  vendor/abseil-cpp/absl/copts/configure_copts.bzl
+0c3143ce98e81adc4f58dce8df58b4e60f8654e4143955681151ea96bf41345f  vendor/abseil-cpp/absl/copts/copts.py
+fc5e58973f8fdef98186fd4756e1a993fd7121ada4b0dbc633a64be813488db9  vendor/abseil-cpp/absl/copts/generate_copts.py
+ebfc5f7680b0c7c7a545c76815ca858fc5be3affdb20b6014821cc3a627997a8  vendor/abseil-cpp/absl/crc/BUILD.bazel
+cc8c7359a3f2c24b61ff23ab6dea57023525d8b18c584214f8968bfd00bb9ad3  vendor/abseil-cpp/absl/crc/CMakeLists.txt
+e476de056d64ea155bea7538f94438476d56331822e514d52828702a4b7458f2  vendor/abseil-cpp/absl/debugging/BUILD.bazel
+a2f78cf19070e6ec0f8fb2b69e90c7784a24d89c31aab725e690429386f6ba88  vendor/abseil-cpp/absl/debugging/CMakeLists.txt
+ac699633fe781b8a92be68d21558e1758bbe7974dcd17dbaad54e3ba76a8783b  vendor/abseil-cpp/absl/flags/BUILD.bazel
+b36e406fef797ad5c2e71ee44c90a66f6b863000044c7e708d358d4814f91f29  vendor/abseil-cpp/absl/flags/CMakeLists.txt
+a7488b8117fdfc0b17c311f51481fd9defa69f95dfd400e8fd06ec4c6107b1fe  vendor/abseil-cpp/absl/functional/BUILD.bazel
+31f34a39484f8f9a2c84f2dc07364d70acb2a7b7d0d6bf6c387f0260e0c48153  vendor/abseil-cpp/absl/functional/CMakeLists.txt
+29bdd1f42077cdd9cbd25e5176b409a27558ff06f16e452d4712b2a734facb6a  vendor/abseil-cpp/absl/hash/BUILD.bazel
+bb7c85eb3d9ba1de92989968d367afd75d4f90f8414ff5ccafad0c7362330699  vendor/abseil-cpp/absl/hash/CMakeLists.txt
+4548f746f2da33b05916a26ab12c5b40b1617a6e540dd90d5ec8597a24334173  vendor/abseil-cpp/absl/log/BUILD.bazel
+278e51bb761f469e03758c4f74b3475dac56b12642e62160c5997ddc7262424d  vendor/abseil-cpp/absl/log/CMakeLists.txt
+ea4044b5a7723b7741a7707464227c7d8ec0e82ffc8bdcd3ffbb95eb4aa08d30  vendor/abseil-cpp/absl/log/internal/BUILD.bazel
+f6edd43901ab2d2b0daba58bab87648db921acb8ab38522d2d970ec95b7d130a  vendor/abseil-cpp/absl/memory/BUILD.bazel
+376ad556ca0f7a6b608a0c83f7187cde0a9724d1bdeef6f05cd0b77c3e43cf04  vendor/abseil-cpp/absl/memory/CMakeLists.txt
+19c6c9ac90cba548f5177c858b1c6419497a61847313d1b1afe42e426d55bff0  vendor/abseil-cpp/absl/meta/BUILD.bazel
+ad9ade78953e609906d397944845158cb51761faa3d52b3e5c327903a4ecb588  vendor/abseil-cpp/absl/meta/CMakeLists.txt
+b2789c25e6f244b35772682d07da7beafa61d6fe8fdbdca0d2405fce3b4d2fb4  vendor/abseil-cpp/absl/numeric/BUILD.bazel
+cc78a7d078870df1ce52b553665c95f8d01054c56a3a802aed0b3f0b90158125  vendor/abseil-cpp/absl/numeric/CMakeLists.txt
+43a6597cce30bffa9d16712dfebd7a0f0f4c21e64c7745bc1422876845cf3c6e  vendor/abseil-cpp/absl/profiling/BUILD.bazel
+583236ba18837a2148aa26ce4c6b1620b8d808e267884716891bc02a4fa79f94  vendor/abseil-cpp/absl/profiling/CMakeLists.txt
+02822b5e7c5899952db88e2ffd6b5ad61b683d13bbe3b4227acc49cbd476041d  vendor/abseil-cpp/absl/random/BUILD.bazel
+89588edc9454c2d061509cb8052672907dfd53361d24da42ff6b106458263766  vendor/abseil-cpp/absl/random/CMakeLists.txt
+33501db7e5e0299efe49d56331192e05621cf1dda63d6a5b21b9bf1ab12f392a  vendor/abseil-cpp/absl/random/internal/BUILD.bazel
+8005f801987e6c9a40d89dbafe63a791ab24966fa5cac3b0e6e89b3a5e1de803  vendor/abseil-cpp/absl/status/BUILD.bazel
+1377000390220cfec9bf5c8a5327fffd3db8bac398269617af590fce5f305851  vendor/abseil-cpp/absl/status/CMakeLists.txt
+1c9ac3d35fd51f85eef488aba28bbcbc75ae55a5556e8bc7783f2555aa013ae0  vendor/abseil-cpp/absl/strings/BUILD.bazel
+b840d8acbfe5aaf7c70db96364f10618fdb409656bb39fb4e5cf284ec6fb5907  vendor/abseil-cpp/absl/strings/CMakeLists.txt
+b81ef66dbb481138026d79267c9d444defdd40d5e985913bc3e5d25afbf984f6  vendor/abseil-cpp/absl/synchronization/BUILD.bazel
+74118b1b87d8b0922205fda6489d9827cab049bbb7f1412aa0f5823474a49fa4  vendor/abseil-cpp/absl/synchronization/CMakeLists.txt
+cd0ff2337410ea4c692f7ec750fda719f9928f658fd2e66a7edd802b93e4f0e3  vendor/abseil-cpp/absl/time/BUILD.bazel
+d0ced544449a66921b4a80aa204b7bde25bfab678488ea05d1d9c90f69ee65c8  vendor/abseil-cpp/absl/time/CMakeLists.txt
+bf1d0597eae05e1077ea5a471e9d5afe8b64fff36fcb775d71f715d7780fc362  vendor/abseil-cpp/absl/time/internal/cctz/BUILD.bazel
+601fe3ee5d67e22692fbacf52bfec6b829f9bdc3491b7d63115a6faad1d00b97  vendor/abseil-cpp/absl/types/BUILD.bazel
+f61240696c75cae48af11e19c03cf5adfdf0140f75c10180d9d528b1f0193c32  vendor/abseil-cpp/absl/types/CMakeLists.txt
+b474319687cc5fc9ca4e0d2264422237f3abcb4d05fccb6bc5d509095de1ae50  vendor/abseil-cpp/absl/utility/BUILD.bazel
+cfa760da1f129197d27e30fd693c8a42341586c06a002b9dbd964bd9381ad2e2  vendor/abseil-cpp/absl/utility/CMakeLists.txt
+
+# H. upstream oracle files this package's fixtures were transcribed from
+9ae267c48541c18942657c4aac08a12809d3b17f13284bfc847ff71aeaaa70f6  src/python/s2geometry_test.py
+f39078bc8139ce47df39c830b8e1201fa575f1e1ca233073fcad1e50c2003be5  src/s2/s2cell_id_test.cc
+419c21d49b8f8c26282429910655852f485f56b0202b1cde1725c61a2560aa77  src/s2/s2latlng_rect_test.cc
+6e19d5baa4466fc85d557b4275199d5211b959073648a0189c5859ae2a8bcb55  src/s2/s2latlng_test.cc
+682e2aac51d4c1eb2a2ac88fb60c7d5030e25685de043144af2f8cf17e9c1dfb  src/s2/s2loop_measures_test.cc
+f3a071206984b1629931661d37463ad59d0562b0810db12fd23f6c0233723841  src/s2/s2region_coverer_test.cc
+
+# I. this fork's independent fixture oracles (testdata/**)
+58c503a81825945d5ae0e6111fe48e72fc26175a95a651743d13ca80d6417b6c  testdata/golang_cellid_latlng.tsv
+31838d909690e35254958ae626046b27250c46328eb23ba1d4c9ee2acf6138ca  testdata/golang_cellid_tokens.tsv
+1fc6264f8a156cb97306ff86a3ce8b14cfa23bb2347a48f8a3aa040b4d56dd85  testdata/golang_latlng_normalize.tsv
+ae2562098838b221029a2bb3ca4e670ed285578876bc2b946069a0ce20cc7c2a  testdata/upstream_coverer_sydney.txt
+764d8777f36313b639ab4c1c0dc4a6cbf584588a8b218d864d2055e334fc2b7e  testdata/upstream_neighbors.tsv
+42ad29dfda55c4f3071d6b08c7b056ede9eb3bbe8c3ba4ec71344344b9078bbb  testdata/upstream_polar_closure.tsv
+
+# J. the pinned compiler's own licence text, carried verbatim (build_support/)
+# Copy of the LICENSE beside the pinned Zig 0.16.0 compiler, SHA-256
+# 5c537d6853e005298a285d508cff9ac7192cea23576c840d485b2b586a7ff177, carried
+# because build_support/wasi_stdlib.patch modifies two upstream Zig
+# standard-library sources.  It is a licence record, not a build input: it is
+# never compiled, installed or read by a gate.
+5c537d6853e005298a285d508cff9ac7192cea23576c840d485b2b586a7ff177  build_support/zig-0.16-LICENSE.txt

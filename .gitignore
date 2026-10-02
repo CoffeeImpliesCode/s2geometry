@@ -4,3 +4,9 @@ MODULE.bazel.lock
 
 # compiled module
 src/s2geometry*
+
+# Zig build outputs. `zig build` writes the cache beside the package and the
+# installed prefix under zig-out/; neither belongs in the repository, and
+# neither may leak into the package manifest's `paths`.
+.zig-cache/
+zig-out/

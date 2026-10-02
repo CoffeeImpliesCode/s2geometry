@@ -1,0 +1,76 @@
+# Published neighbour, parent and child known answers for S2CellId.
+#
+# Every row here is transcribed from a named primary source.  Nothing was
+# computed, and nothing was generalised past what a source actually states.
+#
+# Sources
+#   A  google/s2geometry, src/s2/s2cell_id_test.cc
+#   B  google/s2geometry, src/s2/s2cell_id_test.cc, TEST(S2CellId, Neighbors)
+#   C  google/s2geometry, src/s2/s2cell_id_test.cc, TEST(S2CellId, AllNeighbors*)
+#   D  google/s2geometry, src/s2/s2cell_id_test.cc, TEST(S2CellId, FaceDefinitions)
+#   E  google/s2geometry, src/python/s2geometry_test.py, testS2CellDistance
+#   F  github.com/golang/geo, s2/cellid_test.go, TestCellIDContainment
+#   G  github.com/golang/geo, s2/cellid_test.go, TestCellIDParentChildRelationships
+#
+# Row kinds
+#   edgeface <face> <f0,f1,f2,f3>
+#       The edge neighbours of the level-0 face cell are four face cells with
+#       these face numbers, in this order.  Source B publishes exactly one such
+#       row, for face 1 (lines 574-580); no other face's list is published, so
+#       none appears here.
+#
+#   allnbrs <cell> <csv>
+#       The multiset of all neighbours of <cell> at its own level, in the
+#       "face/childpos" debug spelling.  Source C lists these with
+#       UnorderedElementsAre, so order is irrelevant and a repeat counts twice:
+#       the 3/0000 row really does contain 2/3333 twice and upstream expects it.
+#       The 3/0000 row is `CornerCellHas7Neighbors`, lines 641-649; the
+#       other rows are `AllTopLevelFaceNeighbors` (652-663) and
+#       `AllNeighborsForZurich` (665-678).
+#
+#   cornervertex <face> <pos> <level> <csv of faces>
+#       Source B, lines 610-617: for the leaf cell
+#       `S2CellId::FromFacePosLevel(0, 0, S2CellId::kMaxLevel)`, described in the
+#       comment there as "the corner of faces 0, 4, and 5", the vertex
+#       neighbours at level 0 are exactly the three face cells with the listed
+#       face numbers, sorted.  The cell is named by the arguments upstream passes
+#       to FromFacePosLevel, so the row cannot be misread as a different cell.
+#
+#   face0 <lat> <lng>
+#       Source E, lines 486-487, builds `s2.S2CellId(0x1000000000000000)`
+#       under the comment "Level-0 cell (i.e. face) centered at (0, 0)".  With
+#       source D, lines 90-95, which requires the leaf cell of (0, 0) to be on
+#       face 0, this pins the projection origin: the level-0 cell of face 0 has
+#       id 0x1000000000000000 and its centre is exactly (0, 0).
+#
+#   contain <x> <y> <x_contains_y> <y_contains_x> <x_intersects_y>
+#       Source F, lines 99-138, whose four cells are commented "Pittsburg".
+#
+#   poslevel <face> <pos_in> <level> <pos_out> <child_begin_pos> <child_begin_2_pos> <parent_pos> <parent_m2_pos>
+#       Source G, lines 47-97.  It builds CellIDFromFacePosLevel(3, 0x12345678,
+#       MaxLevel-4) and asserts the cell's position after that masking, the
+#       position of the first child, of the first grandchild, of the immediate
+#       parent and of the grandparent, and the level.
+
+edgeface	1	5,3,2,0
+
+allnbrs	3/	1/,2/,2/,2/,4/,5/,5/,5/
+allnbrs	2/033020001100	2/033020001030,2/033020001033,2/033020001101,2/033020001102,2/033020001103,2/033031110010,2/033031110011,2/033031110322
+allnbrs	3/0000	1/2221,1/2222,2/3330,2/3333,2/3333,3/0001,3/0002,3/0003
+
+cornervertex	0	0	30	0,4,5
+
+face0	0	0
+
+contain	0x80855c0000000000	0x80855c0000000000	1	1	1
+contain	0x80855c0000000000	0x80855d0000000000	1	0	1
+contain	0x80855c0000000000	0x80855dc000000000	1	0	1
+contain	0x80855c0000000000	0x8085630000000000	0	0	0
+contain	0x80855d0000000000	0x80855d0000000000	1	1	1
+contain	0x80855d0000000000	0x80855dc000000000	1	0	1
+contain	0x80855d0000000000	0x8085630000000000	0	0	0
+contain	0x80855dc000000000	0x80855dc000000000	1	1	1
+contain	0x80855dc000000000	0x8085630000000000	0	0	0
+contain	0x8085630000000000	0x8085630000000000	1	1	1
+
+poslevel	3	0x12345678	26	0x12345700	0x12345640	0x12345610	0x12345400	0x12345000

@@ -1,0 +1,21 @@
+# Published S2LatLngRect::PolarClosure known answers.
+#
+# Provenance: google/s2geometry, src/s2/s2latlng_rect_test.cc, TEST
+# (S2LatLngRect, PolarClosure) at lines 416-423.  Each row is a rectangle given
+# as `lat_lo lat_hi lng_lo lng_hi` in degrees, and the polar closure upstream
+# requires for it.  "full" is the whole sphere, which is a legal rectangle and
+# the answer for a rectangle that touches a pole while also spanning every
+# longitude (src/s2/s2latlng_rect.cc:229-234).
+#
+# The first row is a rectangle that touches neither pole and must come back
+# unchanged; the next three each touch one pole and must widen in longitude.
+# That is the whole of the documented behaviour, stated as data.
+#
+# Rows are `in_lat_lo in_lat_hi in_lng_lo in_lng_hi  out_lat_lo out_lat_hi out_lng_lo out_lng_hi`,
+# with the literal `full` in the four output columns when the answer is the whole
+# sphere.
+
+-89 89 0 1	-89 89 0 1
+-90 -45 -30 100	-90 -45 -180 180
+89 90 145 146	89 90 -180 180
+-90 90 -145 -144	full

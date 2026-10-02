@@ -1,0 +1,103 @@
+wasi_stdlib.patch -- installed-provider repairs to the Zig 0.16 standard library
+
+Target
+  Apply with `git apply -p1` (or `patch -p1`) from a pristine Zig 0.16
+  `<zig>/lib` root, then pass that directory to the compiler with the standard
+  `--zig-lib-dir` option. No build-time download, custom SDK option, shim or global
+  tool edit is involved: the copy is the installed `lib` tree with exactly the two hunks
+  below applied, and no other standard library file differs from stock. It reproduces
+  `providers/zig-wasi-stdlib/lib`.
+
+Why
+  A threaded libc-linked wasm32-wasi build (WASI SDK 34, WASIp1-threads, single_threaded=false
+  on every module) does not compile against stock Zig 0.16. Neither hunk adds a capability,
+  silences a diagnostic or substitutes a fake provider.
+
+1. std/heap.zig -- threaded libc-linked wasm32-wasi page allocator.
+   `page_allocator` selects the real `c_allocator` for the wasm32-wasi + libc +
+   !single_threaded case, instead of instantiating `WasmAllocator`, which is
+   `@compileError("unimplemented")` there. `c_allocator` is stock Zig code over
+   the SDK's own thread-safe malloc/realloc/free and already satisfies the whole
+   `Allocator` contract, including arbitrary alignment and OutOfMemory. (Zig's
+   `have_posix_memalign` is false for `.wasi`, so on this target it uses its own
+   manual-alignment strategy over that same real allocator.)
+   The new branch also tests `builtin.os.tag == .wasi`, next to the wasm
+   architecture, `builtin.link_libc` and `!builtin.single_threaded`, so it
+   applies only to the wasm32-wasi build this provider exists for. No other
+   target's behaviour changes: emscripten and every other non-`.wasi` wasm OS
+   keep the upstream selection below even when threaded and libc-linked.
+   Unchanged: the `root.os.heap.page_allocator` override, the single-threaded and
+   non-libc WebAssembly `WasmAllocator` selection (so the "unimplemented"
+   diagnostic still reports the genuinely unsupported threaded non-libc case),
+   and every native `PageAllocator` path.
+   `WasmAllocator` and the exported `wasm_allocator` are not touched; declarations
+   are lazy, so the new path never instantiates `WasmAllocator`.
+
+2. std/Io/Threaded.zig -- wasm `memory.atomic.wait32` timeout.
+   A finite `timeout_ns` is clamped to `maxInt(i64)` before conversion, so it stays a
+   finite non-negative nanosecond timeout in [0, 9223372036854775807] and can never wrap
+   to a negative, i.e. indefinite, wait nor trap in `@intCast`. `null` still means "no
+   timeout" and is still -1. Only the wasm branch of `Thread.futexWaitInner` changes: the
+   `use_parking_futex` branch and every native OS branch stay byte-identical to stock, so
+   native thread, park and timeout behaviour is unchanged.
+
+Licensing
+  This patch is fork-authored and touches only these two upstream Zig source
+  files. It carries their original Std context, so the original copyright and
+  license are retained: no upstream license, copyright or comment line is
+  altered, no license is invented for this patch, and none is asserted beyond
+  the unchanged upstream source context. The complete terms of the pinned
+  compiler, copied verbatim, are in the sibling file
+  `zig-0.16-LICENSE.txt` (MIT Expat, "Copyright (c) Zig contributors").
+
+--- a/std/heap.zig
++++ b/std/heap.zig
+@@ -342,6 +342,26 @@
+     @hasDecl(root.os, "heap") and
+     @hasDecl(root.os.heap, "page_allocator"))
+     root.os.heap.page_allocator
++// foundation-libs provider change: threaded wasm32-wasi linked against a real
++// libc (built with the WASIp1-threads sysroot) has no working `memory.grow`
++// page allocator, and upstream `WasmAllocator` is
++// `@compileError("unimplemented")` for `!builtin.single_threaded`, so selecting
++// it here is a hard compile failure rather than a merely weaker allocator.
++// Use the real thread-safe libc allocator instead: `c_allocator` already
++// implements the complete `Allocator` contract (malloc/posix_memalign or manual
++// alignment, resize, remap, free) over the SDK's own allocator. No new
++// allocation layer, simulated mapping, or capability claim is added, and the
++// `root.os.heap.page_allocator` override above still takes precedence.
++//
++// Every other WebAssembly target, and wasm32-wasi without libc or when
++// single-threaded, keeps the upstream selection below, so the "unimplemented"
++// diagnostic still honestly reports the genuinely unsupported threaded
++// non-libc case. `WasmAllocator` is a lazy declaration, so it is not analyzed
++// by this path at all.
++else if (builtin.target.cpu.arch.isWasm() and
++    builtin.os.tag == .wasi and
++    builtin.link_libc and
++    !builtin.single_threaded) c_allocator
+ else if (builtin.target.cpu.arch.isWasm()) .{
+     .ptr = undefined,
+     .vtable = &WasmAllocator.vtable,
+--- a/std/Io/Threaded.zig
++++ b/std/Io/Threaded.zig
+@@ -956,7 +956,18 @@
+             comptime assert(builtin.cpu.has(.wasm, .atomics));
+             // TODO implement cancelation for WASM futex waits by signaling the futex
+             if (!uncancelable) try Thread.checkCancel();
+-            const to: i64 = if (timeout_ns) |ns| ns else -1;
++            // foundation-libs provider change: `memory.atomic.wait32` takes an
++            // i64 nanosecond timeout, and any negative value means "wait
++            // indefinitely". The upstream line here assigns the u64 `ns`
++            // straight to an i64, which does not compile for a threaded wasm
++            // target. Saturate instead: a finite timeout can then never wrap
++            // to a negative (indefinite) wait, and `@intCast` cannot trap on
++            // an absurdly large duration. `null` still means "no timeout" and
++            // stays -1. Native branches are untouched.
++            const to: i64 = if (timeout_ns) |ns|
++                @intCast(@min(ns, @as(u64, std.math.maxInt(i64))))
++            else
++                -1;
+             const signed_expect: i32 = @bitCast(expect);
+             const result = asm volatile (
+                 \\local.get %[ptr]

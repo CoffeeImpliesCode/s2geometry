@@ -13,6 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// foundation-libs portability change: pass the string view's character
+// pointers, not implementation-specific iterators, to std::from_chars.
+
 #include "s2/util/math/exactfloat/bignum.h"
 
 #ifdef __x86_64__
@@ -110,13 +113,13 @@ std::optional<Bignum> Bignum::FromString(absl::string_view s) {
   bool negative = false;
 
   // Consume optional +/- at the front.
-  auto begin = s.cbegin();
+  auto begin = s.data();
   if ((*begin == '+' || *begin == '-')) {
     negative = (s[0] == '-');
     ++begin;
   }
 
-  const auto end = s.cend();
+  const auto end = s.data() + s.size();
   while (begin < end) {
     size_t chunk_len = std::min(static_cast<size_t>(std::distance(begin, end)),
                                 kMaxChunkDigits);

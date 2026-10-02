@@ -1,0 +1,37 @@
+# Published S2LatLng normalization and validity known answers.
+#
+# Provenance: github.com/golang/geo, s2/latlng_test.go, func
+# TestLatLngNormalized (master, fetched 2026-10-01), table at lines 32-92.
+# Each row is `in_lat in_lng out_lat out_lng` in degrees.  These are the pole and
+# antimeridian cases: a latitude beyond +/-90 must clamp, and a longitude beyond
+# +/-180 must wrap, including across the antimeridian from either direction.
+#
+# The `valid` block repeats the same shape for the validity predicate, from
+# src/s2/s2latlng_test.cc:56-57 (out-of-range latitude and longitude are
+# invalid), :132-145 (an infinite coordinate is invalid, and its normalization
+# is invalid too) and :151-166 (a NaN coordinate is invalid).
+#
+# Normalization rows: `norm<TAB>in_lat<TAB>in_lng<TAB>out_lat<TAB>out_lng`.
+# Validity rows:     `valid<TAB>lat<TAB>lng<TAB>0|1`.
+# Infinity and NaN are spelled `inf` and `nan`.
+
+norm	21.8275043	151.1979675	21.8275043	151.1979675
+norm	21.8275043	-151.1979675	21.8275043	-151.1979675
+norm	95	151.1979675	90	151.1979675
+norm	-95	151.1979675	-90	151.1979675
+norm	21.8275043	180	21.8275043	180
+norm	21.8275043	-180	21.8275043	-180
+norm	21.8275043	181.0012	21.8275043	-178.9988
+norm	21.8275043	-181.0012	21.8275043	178.9988
+norm	256	256	90	-104
+
+valid	45	90	1
+valid	-45	-90	1
+valid	-90	-180	1
+valid	90	180	1
+valid	-91	0	0
+valid	0	181	0
+valid	120	200	0
+valid	inf	-122	0
+valid	37	inf	0
+valid	nan	-122	0

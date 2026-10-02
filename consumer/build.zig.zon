@@ -1,0 +1,25 @@
+.{
+    // The package id. A different package from the library, so it carries its
+    // own name and its own fingerprint, which is what makes it a real consumer
+    // rather than a second module of the library.
+    .name = .s2geometry_consumer,
+    .version = "0.1.0",
+    // Supplied by the library's build graph; see FORK-NOTES.md for the receipt.
+    .fingerprint = 0x6a4f93cc352b87c5, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{
+        // A relative path, not a registry or archive URL. The consumer is the
+        // proof that `dep.module("s2geometry")` works from outside the package
+        // that defines it; resolving that through the network would make the
+        // proof depend on a published state of the world instead of on this
+        // tree.
+        .s2geometry = .{ .path = ".." },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        // .zig-cache/ and zig-out/ are deliberately absent: build outputs are
+        // not part of a package.
+    },
+}
