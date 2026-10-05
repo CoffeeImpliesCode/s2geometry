@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! A runnable, deterministic demonstration of the S2 facade.
 //!
 //! `zig build smoke` runs this. There is no input to supply, no clock, no
@@ -14,6 +16,16 @@
 //! facade the way an ordinary program would, through the published module only,
 //! and it is the cheapest thing that proves the C++ archive, the translated
 //! bridge and the facade agree at link time.
+//!
+//! ## The two configurations
+//!
+//! In the default linked build nothing below changes and nothing is read from
+//! the environment or the command line. In a runtime-loading build (`-Druntime=true`)
+//! the native bridge is not linked, so every call below goes through a table
+//! that one explicit `load` fills, and the provider is named on the command
+//! line (`--provider <path>`) or in `S2GEOMETRY_TEST_PROVIDER`. Nothing is
+//! loaded by default and no other file is tried: a run with neither is an
+//! error that says so, not a silent fall back to the bundled linkage.
 
 const std = @import("std");
 const s2 = @import("s2geometry");
@@ -33,6 +45,50 @@ const SmokeError = error{
     ContainmentMismatch,
 };
 
+/// The environment variable that names the provider in a runtime-loading
+/// build, when the command line does not.
+const provider_variable = "S2GEOMETRY_TEST_PROVIDER";
+
+/// A runtime-loading build has no provider until one is named.
+const ConfigurationError = error{NoProviderConfigured};
+
+/// The provider this run should load, from `--provider <path>` or from
+/// `S2GEOMETRY_TEST_PROVIDER`.
+///
+/// Both are explicit. Nothing here looks in a default location, and a build
+/// that was not told which file to load says so rather than loading something
+/// else. The named file has to be a shared build of this package's own bridge:
+/// every `s2br_*` symbol is defined in `zig/bridge.cc` here, so an installed
+/// upstream `libs2` exports none of them and the load refuses it with
+/// `MissingSymbol`.
+fn providerRequest(init: std.process.Init) ConfigurationError![]const u8 {
+    const args = init.minimal.args.toSlice(init.arena.allocator()) catch
+        return noProvider();
+    var index: usize = 1;
+    while (index < args.len) : (index += 1) {
+        if (std.mem.eql(u8, args[index], "--provider")) {
+            if (index + 1 >= args.len) return noProvider();
+            return args[index + 1];
+        }
+    }
+    return init.environ_map.get(provider_variable) orelse
+        return noProvider();
+}
+
+/// Say which variable is missing. An error name on its own would send the next
+/// person into the loader instead of to the command line.
+fn noProvider() ConfigurationError {
+    std.debug.print(
+        "smoke.zig: this is a runtime-loading build. Pass --provider <path>, or " ++
+            "export S2GEOMETRY_TEST_PROVIDER with a shared build of this " ++
+            "package's own bridge -- the image exporting the 93 s2br_* entry " ++
+            "points of zig/bridge.h, with libs2 and libabsl in its closure. " ++
+            "Nothing is loaded by default and no other file is tried.\n",
+        .{},
+    );
+    return error.NoProviderConfigured;
+}
+
 pub fn main(init: std.process.Init) !void {
     var stdout_buffer: [out_buffer_len]u8 = undefined;
     var stdout_file = std.Io.File.stdout().writer(init.io, &stdout_buffer);
@@ -40,6 +96,17 @@ pub fn main(init: std.process.Init) !void {
     defer out.flush() catch {};
 
     try out.writeAll("s2geometry smoke\n");
+
+    // A runtime-loading build has no library until the one explicit load below
+    // succeeds; a linked build is usable already, and this branch is never
+    // analyzed there. Either way the configuration is printed, so a run says
+    // which of the two it was.
+    if (comptime s2.runtime_loaded) {
+        try s2.load(.{ .path = try providerRequest(init) });
+        try out.print("loaded provider: {s}\n", .{s2.loadedSource().?.path});
+    } else {
+        try out.writeAll("linked\n");
+    }
 
     try faceRoots(out);
     try publishedTokens(out);

@@ -1,0 +1,12 @@
+# devenv.yaml — the canonical development entry point for this SDK.
+#
+# `devenv shell` reads this, `devenv.nix` and `.envrc` complete it. The nixpkgs
+# input is pinned to an exact revision rather than a rolling branch: this
+# package's build, its Zig version and its licence metadata must not move
+# because a branch moved.
+#
+# `devenv.lock` is the driver's to create and pin, from an observed run; no
+# hash is invented here.
+inputs:
+  nixpkgs:
+    url: github:cachix/devenv-nixpkgs/c2f38fe7f9e04d9aadd354d380f2bd40531d9737

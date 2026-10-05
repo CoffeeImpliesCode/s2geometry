@@ -16,6 +16,22 @@
 //! through a module import. Headers and C/C++ runtime archives remain
 //! SDK-owned.
 //!
+//! `-Dlinkage=static|dynamic` is the dependency's delivery, forwarded
+//! verbatim through `b.dependency`.  It is declared here as well as in the
+//! dependency because `consumer/` is its own `zig build`: the option travels
+//! from `s2geometry`'s `consumer` step, or from this package's own command
+//! line, and a dependent that passed nothing gets the dependency's own
+//! default -- this SDK's static linkage policy -- rather than a second answer
+//! invented here.  What the value changes is which of the three artifacts
+//! this program links, and that is the point: a shared delivery proved only
+//! against the static graph would not be a shared proof.
+//!
+//! `-Druntime=true` is forwarded on the same terms and is independent of it:
+//! the dependency still delivers and installs its three artifacts, and this
+//! program links none of them.  It then exercises the facade's `load`,
+//! `LoadSource` and `LoadError` instead of a linked call, which is what makes
+//! it evidence about the runtime route rather than about the linked one.
+//!
 //! Run it with `zig build run`; anything after that command's `--` is passed
 //! to the program.  It exits non-zero if any answer disagrees with the value
 //! google/s2geometry or golang/geo publishes for that input, so it is a check
@@ -28,17 +44,55 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const wasi_sysroot = b.option([]const u8, "wasi-sysroot", "Complete WASI SDK 34+ WASIp1-threads EH sysroot");
 
-    const dep = if (wasi_sysroot) |root|
-        b.dependency("s2geometry", .{
-            .target = target,
-            .optimize = optimize,
-            .@"wasi-sysroot" = root,
-        })
-    else
-        b.dependency("s2geometry", .{
-            .target = target,
-            .optimize = optimize,
-        });
+    // The dependency's delivery, not this package's: `consumer/` compiles no
+    // native code of its own, so the option selects which of the three
+    // artifacts the library module links and therefore which one this program
+    // is evidence about.  Forwarded verbatim, and forwarded as an *absent*
+    // option when the caller named nothing, which is what `b.dependency` does
+    // with a null user-input option (`lib/std/Build.zig:568-578`) -- the
+    // dependency then resolves its own default, which is this SDK's static
+    // linkage policy, and a caller who passes nothing changes nothing.
+    //
+    // `zig build consumer -Dlinkage=dynamic` must link the dependency's
+    // *shared* bridge, or the nested build would prove the static graph while
+    // the outer one reported a shared delivery as green.
+    const linkage = b.option(
+        std.builtin.LinkMode,
+        "linkage",
+        "The linkage to ask the s2geometry dependency for: static archives " ++
+            "(its default) or real shared objects. This package compiles no " ++
+            "native code of its own, so the value selects which of the " ++
+            "dependency's artifacts this program links.",
+    );
+
+    // The dispatch, on exactly the same terms as the linkage: this package
+    // compiles no native code, so the option selects how the library module
+    // reaches the library rather than what it links, and it is forwarded as an
+    // absent option when the caller named nothing.  The two are independent --
+    // a runtime-loaded build still delivers and installs the dependency's
+    // three artifacts, and a caller may equally name a provider the dependency
+    // did not build -- so they are forwarded independently and both are passed
+    // straight through to `b.dependency` below.
+    const runtime = b.option(
+        bool,
+        "runtime",
+        "Ask the s2geometry dependency to resolve its native entry points at " ++
+            "run time instead of linking them (its default is off). The facade " ++
+            "keeps the same public types either way; under this option it " ++
+            "publishes `load`, `LoadSource` and `LoadError` and links no " ++
+            "archive.",
+    );
+
+    const dep = b.dependency("s2geometry", .{
+        .target = target,
+        .optimize = optimize,
+        // A null user-input option is not passed, which is why this is one
+        // call rather than the branch it replaces: the two produced the same
+        // dependency either way.
+        .@"wasi-sysroot" = wasi_sysroot,
+        .linkage = linkage,
+        .runtime = runtime,
+    });
 
     // No `link_libc` and no `link_libcpp` here on purpose. Those requirements
     // belong to the library module, which carries them; a dependent states its

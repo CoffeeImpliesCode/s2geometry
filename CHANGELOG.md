@@ -3,7 +3,8 @@
 Everything below is a change **this fork** made, not an upstream release.
 `src/` is upstream's bytes except for one bounded, disclosed deviation (§50);
 seven bounded Abseil deviations are disclosed in §45, §51 and §52, separately
-Upstream's own `README.md`, `CONTRIBUTING.md` and `doc/` remain unchanged.
+Upstream's own `README.upstream.md`, `CONTRIBUTING.md` and `doc/` remain
+unchanged.
 
 The pinned upstream is s2geometry `v0.14.0` at
 `c24b368c67d0b8a2a109c5a75224e73a856bd8b7`, with Abseil C++ LTS `20250814.1`
@@ -59,7 +60,7 @@ travel with the source they describe.
 ## 4. Chose `20250814.1`, the CMake pin, over the other two versions the tag names
 
 The v0.14.0 tree names three Abseil releases: `CMakeLists.txt:71-75` says
-`20250814.1`, `README.md:59-61` says `20250814` (linking to the same
+`20250814.1`, `README.upstream.md:59-61` says `20250814` (linking to the same
 `20250814.1` tag), and `src/MODULE.bazel:11` says `20260107.1`. This fork uses
 the CMake pin, because that is the build definition being replaced and because
 `CMakeLists.txt:24-27` explains that a different Abseil configuration defines
@@ -411,12 +412,15 @@ left intact in the tree and can still be built with upstream's CMake.
 
 ## 25. Added `-fsys=s2`, with the same five entry points
 
-`-fsys=s2` links an installed `libs2` and the 26 `absl_*` libraries upstream's
-`s2` links, and offers `install`, `test`, `smoke`, `check` and `consumer` — the
+`-fsys=s2` links an installed `libs2` and the Abseil libraries upstream's `s2`
+links, and offers `install`, `test`, `smoke`, `check` and `consumer` — the
 same five the bundled graph has, against the installed library and its installed
 headers. Omitting any of them would leave the mode unproven where it matters
 most: a system library whose facade compiles but whose behaviour differs from
-this tree's is exactly what the mode exists to catch.
+this tree's is exactly what the mode exists to catch. **§75 supersedes the shape
+of that sentence: this graph no longer enumerates `-l` stems at all. It
+resolves one pkg-config package, the project's own `s2geometry`, whose installed
+`.pc` carries the closure.** This entry keeps the dated reason the mode exists.
 
 Two decisions inside it are deliberate and are stated in the code:
 the bridge is still compiled from this repository (an installed upstream
@@ -1530,8 +1534,8 @@ build, which was nothing. An argument the consumer accepts on the outer command
 line and never sees is the outer build reporting a narrower check than the one
 it was asked for.
 
-`build.zig:948-958` closes the handover, and the two facts around it are
-load-bearing:
+`addConsumerStep` closes the handover in its last block, and the two facts around
+it are load-bearing:
 
 ```zig
 if (b.args) |args| {
@@ -1540,8 +1544,8 @@ if (b.args) |args| {
 }
 ```
 
-* The handover exists on the other side and is one line:
-  `consumer/build.zig:87-88` — `const run_exe = b.addRunArtifact(exe);` and then
+* The handover exists on the other side and is one line: `consumer/build.zig`
+  ends with `const run_exe = b.addRunArtifact(exe);` and then
   `if (b.args) |args| run_exe.addArgs(args);`. That is the only place the
   consumer package's arguments become the program's, so they have to be
   forwarded there; `b.args` everywhere else is the *nested* build's own.
@@ -1615,7 +1619,7 @@ nested build could not keep: `Step.Run` asks the same predicate and then applies
 a second gate of its own, and this step did not carry it. The step would choose
 `run`, and the run would fail on a directory this build never had.
 
-`build.zig:987-1018` is the predicate; two fields of its options struct are the
+`hostCanExecute` is the predicate; two fields of its options struct are the
 whole correction:
 
 ```zig
@@ -1638,9 +1642,9 @@ This step installs the consumer instead, which is compile evidence and never an
 execution result. Every other QEMU case is untouched — a foreign architecture
 whose libc needs no cross runtime, a musl consumer among them — and still runs.
 
-`--libc-runtimes` now travels to the nested build (`build.zig:939`, the runner's
-own option at `lib/compiler/build_runner.zig:323-325`), beside the executor
-switches (`:934-938`, from `:388-407`). Without that forward the predicate would
+`--libc-runtimes` now travels to the nested build beside the executor switches —
+the runner's own option at `lib/compiler/build_runner.zig:323-325`, from
+`:388-407`. Without that forward the predicate would
 read the outer graph's runtimes directory and the run would read the nested
 graph's empty one, and the two would disagree about the same target.
 
@@ -1670,9 +1674,10 @@ backend with `ABSL_USE_UNSCALED_CYCLECLOCK` on OpenBSD/NetBSD PowerPC
 DbgHelp calls are in `absl/debugging/symbolize_win32.inc`, which only
 `absl/debugging/symbolize.cc:34-37` includes, and the CoreFoundation calls are
 in `absl/time/internal/cctz/src/time_zone_lookup.cc` — both library translation
-units this mode does not compile. The `absl_*` names the mode does link are
-upstream's own `s2` dependency list, `CMakeLists.txt:253-278`, name for name
-(`build.zig:706-733`), and that list names neither
+units this mode does not compile. The libraries the mode binds are the ones the
+installed `s2geometry.pc` names, which is upstream's own `s2` dependency closure
+(`CMakeLists.txt:253-278`); **this graph transcribes none of them and links no
+`-l` stem by hand**, and the closure names neither
 `absl_symbolizing`/`absl_stacktrace` nor `absl_time_cctz`/`absl_time`; naming
 either here would add a dependency to no translation unit this mode compiles.
 For the define, `:668-680` records that which **definition** of
@@ -1689,7 +1694,8 @@ export, their pkg-config file, or the consumer's own link line. This build does
 **not** inspect the installed archives' link closure, does **not** name a system
 library on their behalf, and claims nothing for a platform on which they are not
 installed. The host it is written for is the one that already has an installed
-`libs2` and the 26 `absl_*` archives beside it for the target being built. What
+`libs2` and the Abseil archives its `s2geometry.pc` names beside it for the target
+being built. What
 the mode does share is the WASI provider, through the same
 `Provider.init`/`configureModule`/`linkRuntime`/`configureCompile` calls
 (`:735`, `:742`, `:756`, `:766`, `:775`, `:779-780`).
@@ -1726,3 +1732,1007 @@ option provenance, its integrity record and its receipts are history at their
 own revisions, and none of them is refreshed here. The rows above are the
 additions. No earlier row is upgraded, because a landed source correction is not
 a gate.
+
+## 61. Zig API contract alignment — 2026-10-03
+
+**Condition.** Scalar S2 values copy independently; Loop and Polygon copies
+alias one native resource. Public raw fields do not provide move semantics.
+
+**Fix.** Attach the misplaced Cell/rectangle documentation to its declaration.
+Complete authored type, field, method, buffer, raw-handle, allocation, borrow
+and once-only release contracts. Keep grouped field contracts on their owning
+types. Correct stale native citations and provider caveats; supply an
+executable dependent-module example.
+
+**Verification and bound.** Zig 0.16.0, native Linux x86-64: install,
+Debug/ReleaseSafe tests, smoke, package consumer and module example pass.
+The aggregate compile-only `check` fails: the macOS Abseil build cannot find
+CoreFoundation here, and WASI requires the complete explicitly selected SDK
+provider. This entry neither supplies those providers nor claims foreign
+execution. C/C++, bridge headers, generated bindings and pins are unchanged.
+
+## 62. The README became the fork's own, and upstream's moved — 2026-10-04
+
+`README.md` was **upstream's README, byte for byte**, since the import: this
+fork had never written one. It now is this fork's README, in the order the
+contract requires — current native-source deviations, current native-build
+deviations with a dated history link, the current build/run/test matrix, then
+consumption — and the Zig interface documentation stays where it was, in
+`README.zig.md`.
+
+Upstream's bytes were **preserved, not dropped**: they are at
+`README.upstream.md`, unchanged, and `UPSTREAM.sha256` carries the same digest
+`d91df72a132d05348e17a32bd0443c7325c701c79c4aa9e766d74b564a609ce1` under the
+new name. One record was renamed and none added or removed, so the path set is
+still **927**. The new files deliberately outside that record — `README.md`
+itself, `FORK-LICENSE.md`, `package.nix`, `flake.nix`, `devenv.nix`,
+`devenv.yaml`, `.envrc` — are excluded on the rule that already excludes this
+fork's other mutable records and build files, and the record's exclusion list
+now says so by name.
+
+**What moved into the new README's matrix, unchanged in meaning:** every row is
+either `PENDING` or explicitly historical, with its receipt. The pre-migration
+native 46/46 runs, the four-pass/two-fail six-target baseline and the two
+53-cell sweeps remain history at their own revisions; nothing in them is
+restated as a current result.
+
+## 63. The fork's own files got a licence — 2026-10-04
+
+The owner has authorized a licence for the fork-authored additions, matching
+the primary upstream terms where that is appropriate. For this project the
+primary upstream term is **Apache-2.0** — both upstreams are — so the fork's own
+files are **Apache-2.0**, SPDX `Apache-2.0`, recorded in the new
+`FORK-LICENSE.md` with the authorization, the scope, the §3 patent-termination
+clause, and the two rows that need their own sentence: the Zig standard-library
+patch (Apache-2.0 over the patch file; the patched Zig files keep their MIT
+terms, whose text ships at `build_support/zig-0.16-LICENSE.txt`) and the
+transcribed fixture data (Apache-2.0 over the transcriptions; golang/geo's
+BSD-3-Clause text is still deliberately not shipped, because none of its source
+is).
+
+Every earlier statement that **no licence was asserted** over these files is now
+history, and it stays in the tree as such: `NOTICE.md` (the grant, the Zig patch
+bullet and the §4 table), `FORK-NOTES.md`'s owner-decision list, and
+`README.zig.md`'s licence section. Upstream's grant over upstream's bytes is
+untouched, no upstream author is credited as the holder of a fork-authored
+file, and no individual copyright identity is invented.
+
+## 64. Nix packaging: one derivation, two variants, a canonical shell — 2026-10-04
+
+Four new files. No change to `build.zig`.
+
+* **`package.nix`** — the one source-only derivation, taking injected
+  `lib`/`stdenv`/`zig` and `linkage ? "static"`. It filters its own source with
+  `lib.fileset`, so `.git`, `.zig-cache`, `zig-cache`, `zig-out`, `zig-pkg`,
+  `consumer/zig-out`, `.devenv/`, `.direnv` and `result/` stay out of the store
+  while every compiled source, installed header, fixture and licence record
+  stays in. It asserts the pinned Zig version, refuses a Nix
+  cross-compilation, builds one variant in one install phase with both Zig
+  caches under the Nix-provided `TMPDIR`, checks the variant's libraries and the
+  public header closure including an Abseil `.inc`, and fills in
+  `s2geometry.pc` and the licence directory only while the build graph does not
+  install those paths itself.
+* **`flake.nix`** — `packages.<system>.static`, `.shared` and `.default` (the
+  existing static policy), one pinned nixpkgs input, a tools-only devShell, no
+  lock.
+* **`devenv.nix`** / **`devenv.yaml`** / **`.envrc`** — the canonical shell:
+  tools only, the same derivation as lazy `outputs.static` and `outputs.shared`,
+  namespaced tasks that run real commands, and no override of the caller's
+  TMPDIR, Zig cache or devenv state variables.
+
+**The one build-graph dependency:** `-Dlinkage=static|dynamic`, which the build
+graph is gaining for the shared variant. `package.nix` passes it, and its
+install-phase check fails a shared build rather than describing a static
+archive as a shared one.
+
+**Verification: none.** No `nix` or `devenv` command has been run against these
+files by the role that wrote them. Every packaging row in `README.md` is
+`PENDING-VERIFICATION`.
+
+## 65. Packaging corrections from the integration review — 2026-10-04
+
+Applied to §64's files. No SDK behaviour changed and no upstream byte changed.
+
+* `package.nix` takes an **injected `zig`** (`zig = pkgs.zig_0_16` at both entry
+  points) and returns **one derivation**; the variants live in `flake.nix` and
+  in devenv's lazy `outputs.static` / `outputs.shared`.
+* The `builtins.currentSystem` guard is gone: it rejected a native build on a
+  remote builder, which is an ordinary native build. The guard now compares
+  `stdenv.hostPlatform.system` with `stdenv.buildPlatform.system`, which is the
+  case actually unsupported here, since no `-Dtarget` is passed and `zig build`
+  therefore builds for the build machine.
+* One build in one explicit install phase: the setup hook's configure, build,
+  check and install phases are switched off, both Zig caches are exported under
+  the Nix-provided `TMPDIR`, and the invocation carries
+  `-j"$NIX_BUILD_CORES"`, one optimize selection, `-Dcpu=baseline`,
+  `-Dlinkage=<variant>`, `-fno-sys=s2` and `--prefix "$out"`.
+* The build graph owns the install: `s2geometry.pc` and the licence directory are
+  written only when the graph has not installed them, so there is one writer per
+  path whichever side owns it.
+* `devenv.nix` no longer reads `HOST_SCRATCH_ROOT` and sets no cache variable: a
+  caller that supplies its own scratch keeps it. Its tasks are namespaced
+  (`sdk:build`, `sdk:test`, `sdk:test-release-safe`, `sdk:smoke`, `sdk:check`,
+  `sdk:consumer`, `sdk:fmt`, `sdk:integrity`).
+* Prose in the packaging files and the records was cut to what a reader needs:
+  one build contract, one derivation, one licence grant, no repeated grant
+  essay and no invented legal reasoning.
+
+## 66. Completed the Abseil closure, resolved the installed tree first, and stated the boundaries — 2026-10-04
+
+Three corrections and one record. **No upstream byte changed**: the closure
+grew by one path that upstream already named, and the rest is build-graph
+ordering and documentation.
+
+### The one translation unit the source list had omitted
+
+`build_support/absl_sources.zig` is transcribed from the vendored tree's
+`absl_cc_library(... SRCS ...)` blocks. That was not quite what upstream
+compiles. `vendor/abseil-cpp/CMake/AbseilHelpers.cmake:234` (static) and `:260`
+(shared) both run
+`target_sources(${_NAME} PRIVATE ${ABSL_CC_LIB_SRCS} ${ABSL_CC_LIB_HDRS})` — the
+`HDRS` list is compiled as well as installed, so a `.cc` file upstream lists
+under `HDRS` is a translation unit and not a header.
+
+`absl/strings/internal/escaping.cc` is exactly that case:
+`vendor/abseil-cpp/absl/strings/CMakeLists.txt:126` lists it under the
+`strings_internal` target's `HDRS`, while `:131-133` lists only
+`internal/ostringstream.cc` and `internal/utf8.cc` under `SRCS`. This fork's
+list omitted it, so the compiled Abseil closure was missing a unit that
+upstream's own build compiles. It is now in the list, **unchanged** — the file
+is carried byte for byte and its `UPSTREAM.sha256` record is untouched. Adding
+the path is the whole correction; no other list, flag, header or exclusion
+moved, and the fourteen `TESTONLY`/gtest-dependent exclusions are still exactly
+those fourteen.
+
+### The source-count assertion is gone
+
+`build.zig` used to assert the two list lengths at comptime
+(`std.debug.assert(absl_sources.sources.len == 153)` and the S2 equivalent). That
+assertion is what first exposed the omission: with `internal/escaping.cc` added,
+configuring the build failed at
+`local://foundation-contract-s2geometry-shared-full-Abseil-HDRS-source-closure-origin-first-install.log`
+(`debug.zig:420 error: reached unreachable code`, called at comptime from the
+assert). Neither assertion remains in `build.zig`; `build_support/s2_sources.zig`
+still publishes `source_count` as a description of the list it declares, and
+nothing consumes it.
+
+The reason is not that the check was wrong — it was right, and it caught a real
+defect. It is that a pin has to be edited by hand every time a genuine source is
+added, which makes it a second place for the closure to be wrong and turns a
+closure correction into a build failure before it can be seen. The transcribed
+list is now the single authority: `build_support/absl_sources.zig` says in its own
+header why it is enumerated rather than globbed, and it is the same file
+`build.zig` compiles.
+
+### The installed tree resolves itself; the build cache is the fallback
+
+For `-Dlinkage=dynamic`, each shared object records its dependency's soname in
+`DT_NEEDED` and now searches **its own installed directory first**: `$ORIGIN` on
+ELF and `@loader_path` on Darwin, which is Abseil's published `INSTALL_RPATH`
+(`vendor/abseil-cpp/CMake/AbseilHelpers.cmake:259-267`) together with
+s2geometry's `set(CMAKE_MACOSX_RPATH TRUE)` (`CMakeLists.txt:20-22`). All three
+libraries install into `lib/`, so a **relocated** prefix finds its dependencies
+beside itself rather than reaching back into a build directory.
+
+The ordering is the substance. `linkNativeDependency` takes the dependency's
+emitted shared object through `addObjectFile` rather than `linkLibrary`, because
+`linkLibrary` inserts a cache-first RPATH of its own ahead of anything the
+caller says; the graph then adds the installed-tree RPATH **before** the
+build-cache directory (`addInstalledTreeRPath` then `addRPath`), so a cache-only
+build artifact can still find its separately emitted peer while an installed one
+resolves beside itself. Windows has no runtime search path of this kind — the
+loader finds a dependency by name beside the DLL that names it — and
+`Module.addRPathSpecial` emits a bare `-rpath` with no target test
+(`lib/std/Build/Module.zig:626-635`), so nothing is added there.
+
+### The three ABI boundaries are now written down
+
+`runtime/library.zig` already stated them for the loader; `README.md` and
+`README.zig.md` now state them for a reader of the package:
+
+* **C++ bridge** — plain C through `extern "C"`, so the platform C ABI is the
+  requirement; scalars `double`, `uint64_t`, `int32_t`, `int`, `size_t`; a cell
+  id *is* the whole 64-bit integer, so no face/Hilbert layout is re-derived here;
+  `S2BridgeCovererOptions` is four `int32_t` in the order `min_level`,
+  `max_level`, `level_mod`, `max_cells` and crosses by pointer, so its field order
+  is the ABI; `S2BridgeLoop` and `S2BridgePolygon` are incomplete types whose
+  storage C++ allocates and frees.
+* **Allocator** — exactly one allocator, the provider's. Input vertex arrays are
+  borrowed for the call (`S2Loop::Init` copies them), list returns destroy
+  their upstream `std::vector` and write into a caller buffer, `Loop`/`Polygon`
+  storage is released by `s2br_*_destroy`, which accepts a null handle, and
+  `std::bad_alloc` is caught inside the bridge rather than travelling outward.
+  No heap block crosses the boundary, so there is no cross-runtime allocator
+  requirement and no test framework can be given a leak oracle for it.
+* **Configuration** — `-Dlinkage` decides what is delivered and installed,
+  `-Druntime` decides whether the facade links it or dispatches through the
+  table `load` fills, and the two are orthogonal, so all four combinations exist.
+  `-fsys=s2` is a third and separate answer: it replaces the library itself.
+
+`README.md` also drops its incidental pinned figures — the two source counts,
+the bridge entry-point tally, the facade's method tally and the integrity
+record's length — in favour of pointing at the file each one is counted from.
+Those numbers were true of one revision and were a second place to be corrected;
+where a receipt printed a test or step count, that count stays, because it is
+what the run said.
+
+### Observed
+
+Two gates the driver ran over this tree, and nothing more than what they
+printed:
+
+* Native shared delivery and install, `-Dlinkage=dynamic`: "Build Summary: 25/25
+  steps succeeded", `install success` for `libabsl.so.2508`, `libs2.so.0` and
+  `libs2bridge.so.0`, plus the header tree, `s2geometry.pc` and every licence
+  record — `local://foundation-contract-s2geometry-shared-origin-first-complete-native-closure-source-count-pin-removed.log`.
+  That command installs; it does not run the test suite.
+* Runtime-loaded static delivery, `-Dlinkage=static -Druntime=true`, against a
+  separately supplied installed provider named explicitly by the caller: no
+  archive is linked into the module, the load succeeds, and every smoke section
+  prints its published answer — "Build Summary: 6/6 steps succeeded",
+  `smoke success`, provider
+  `…/s2geometry-shared/lib/libs2bridge.so.0.14.0` — `local://foundation-contract-s2geometry-real-complete-installed-shared-provider-runtime-static.log`.
+  This covers the runtime route with the **static** delivery; the other three
+  combinations of the two options are separate configurations and none of them
+  is covered by this receipt.
+
+### Still pending
+
+The standalone `consumer/` package over this source (the dependency-isolation
+gate, and the `-Druntime`/`-Dlinkage` forwarding it has never exercised), the
+full 53-platform `cross-test` matrix, every Windows cell, the native Debug and
+ReleaseSafe `test smoke install` runs, `zig build check` for all six targets, and
+the driver-owned filtered fetch, integrity replay and materialised consumer.
+`package.nix` still refuses a Nix cross-compilation and has never been evaluated
+or built, so the Nix rows stay `PENDING`; nothing in this entry upgrades a row
+that did not run.
+
+## 67. The ELF shared closure got its own visible C++ runtime, and the install tree stopped carrying a cache path — 2026-10-04
+
+Four artifacts on one route, two native graphs, and the records that had to move
+with them. **No upstream byte changed**: `src/` keeps its one disclosed change,
+`vendor/abseil-cpp` its seven, and the C++ runtime that this entry adds is the
+build compiler's own shipped source, read at build time from the directory the
+compiler compiles it from.
+
+### What was wrong, in the words the old records used
+
+§66 delivered the shared closure as three objects and told every reader to expect
+three: "`dynamic` delivers the same three as shared objects", "all three install
+into `lib/`", "the build-cache directory is appended **after** that", and — in
+`NOTICE.md` — "**no compiler runtime beyond the standard library**" is compiled.
+Each of those was true of §66's revision and none is true of this one.
+
+What actually happened on that route before this repair: an ELF shared build
+with no runtime of its own failed at load, three times over, each time naming a
+libc++ or unwinder symbol that nothing in the image provided. The three
+timestamped receipts are in
+`/home/tmp2/gertullj/scratch/foundation-libs/contract-physics-lua/s2-current-evidence/`,
+each `exit 1` on the same command
+(`zig build test smoke install -Druntime=false -Dlinkage=dynamic
+-Doptimize=Debug`): an undefined
+`_ZTTNSt3__119basic_ostringstream<...>` out of `libs2.so.0`
+(`…-13-50-09`), an undefined `_ZNSt3__15ctypeIcE2idE` out of
+`libabsl.so.2508` (`…-13-57-39`), and an undefined `_Unwind_Resume`
+(`…-14-12-42`). The cause is structural rather than a missing library: Zig's
+ordinary static C++ runtime archive is compiled with **hidden exports**, so when
+each image linked its own copy, S2 and Abseil ended up with **separate
+`std::locale` facet registries** and an S2 log stream crossing an image boundary
+died in `std::use_facet` — which is what the driver's earlier shared-Debug run
+reported before the runtime existed: 43 passing tests, then three
+`std::use_facet` segfaults, across the invalid-rect, repeated-vertex and
+boolean-rejection paths.
+
+### The fourth artifact, on exactly one route
+
+`-Dlinkage=dynamic` **on an ELF target** now also produces
+`libs2cpp.so.0.16.0` (soname `libs2cpp.so.0`, with `libs2cpp.so` and
+`libs2cpp.so.0` beside it). `build_support/cpp_runtime.zig` builds it from the
+pinned compiler's complete libc++, libc++abi and libunwind source lists, in the
+configuration `src/libs/libcxx.zig` selects — threaded, `single_threaded =
+false`, `ReleaseFast`, C sanitization off and hardening `NONE`, which is the
+compiler's own policy for that runtime, not this package's. The three S2/Abseil
+modules are then compiled against **that** ABI (`_LIBCPP_ABI_VERSION=1`,
+`_LIBCPP_ABI_NAMESPACE=__1`, `_LIBCPP_HARDENING_MODE_NONE`) instead of embedding
+their own, and the facade and every executable link that one shared object by
+name, so no ELF image in this package carries a second private static C++
+runtime.
+
+It is built with upstream's own shared-library visibility annotations rather than
+Zig's static-runtime hiding: `-fvisibility=hidden` with
+`_LIBCPP_BUILDING_LIBRARY` defined, so `_LIBCPP_EXPORTED_FROM_ABI` resolves to
+`visibility("default")` (`<zig>/lib/libcxx/include/__config:427-431`), and
+libunwind compiled without `_LIBUNWIND_HIDE_SYMBOLS`. Hidden exports are what
+made the earlier arrangement unusable across images; a DSO with upstream's real
+export surface is what makes one shared runtime usable by all of them.
+
+Nothing else changes route. `static`, `wasm32-wasi`, Darwin and Windows keep
+their ordinary C++ provider rules — Zig's own, the installed WASI SDK 34
+sysroot, and the platform default respectively — and install no `libs2cpp`. The
+predicate is `sharedCppOwner(target, linkage)` — `linkage == .dynamic` together
+with `target.result.ofmt == .elf` (`build.zig:868-870`).
+
+### Two native graphs, and only one of them is installed
+
+§66's answer — `$ORIGIN` first, build-cache directory second, on every shared
+object — is superseded for the installed tree. `addNativeGraph` is now called
+twice on the dynamic route: once for the **published** facade graph with
+`cache_paths = true`, and once for the **install** graph with `cache_paths =
+false` (`build.zig:546-556`). The installed objects therefore carry `$ORIGIN` on
+ELF and `@loader_path` on Darwin and **nothing after them**: no build-cache
+directory appears in an installed object's runtime search path at all. The
+cache-aware second copy exists for the facade, the smoke program and the tests,
+whose binaries run before anything is installed, and it puts the cache directory
+after `$ORIGIN` exactly as §66 described.
+
+The cost is a second compilation of the three libraries on that one route, which
+the receipts show directly: in the Debug shared cell, `install absl` compiles its
+own copy (28 s) rather than reusing the one the tests linked, and `compile lib
+s2cpp` is reused by both graphs because the two are configured identically.
+`static` is unaffected: one graph, compiled once and installed.
+
+### Metadata, licences, and the records
+
+* The installed `s2geometry.pc` appends **`-ls2cpp`** to `Libs` on that route and
+  not otherwise (`addPkgConfig`, `build.zig:2060`, `:2079`). Static delivery
+  installs no runtime artifact, so its `Libs` is unchanged.
+* The three runtime components are the LLVM project's **Apache License 2.0 with
+  the LLVM exception**, and each one's own `LICENSE.TXT` is installed verbatim
+  from beside the compiler's sources as
+  `share/licenses/s2geometry/LICENSE.libcxx.txt`, `LICENSE.libcxxabi.txt` and
+  `LICENSE.libunwind.txt`. They are the compiler's shipped licences, not the
+  compiler's MIT text, which this package already carries for the
+  standard-library patch and does not extend to cover them.
+* `UPSTREAM.sha256` does **not** grow: those sources are not in this tree. The
+  record's scope is this working tree's bytes, and it is not widened to cover a
+  compiler installation.
+* `build_support/cpp_runtime.zig` is fork-authored and joins the Apache-2.0
+  inventory in `NOTICE.md` and `FORK-LICENSE.md`; `NOTICE.md`'s "no other
+  third-party code is compiled" statement is corrected rather than deleted, and
+  names the route, the three components and their pin.
+
+### Observed
+
+Sixteen native cells, each run by the driver as
+`zig build test smoke install -j8`, each `exit 0`, each printing
+`46/46 tests passed` and `smoke success`: `-Dlinkage` (static, dynamic) ×
+`-Druntime` (false, true) × Debug / ReleaseSafe / ReleaseFast / ReleaseSmall.
+Step counts are `39/39` for native shared, `32/32` for native static, `36/36` for
+runtime-loaded dynamic and `33/33` for runtime-loaded static. Every dynamic cell
+prints `install s2cpp success` and the three `LICENSE.*.txt` installs; no static
+cell contains a `s2cpp` step at all. The eight runtime-loaded cells named their
+provider explicitly — `S2GEOMETRY_TEST_PROVIDER` set to this package's own
+installed `…/s2geometry-shared/lib/libs2bridge.so` — and printed
+`loaded provider: …/libs2bridge.so` beside every published answer. Receipts are
+timestamped JSON under
+`/home/tmp2/gertullj/scratch/foundation-libs/contract-physics-lua/current-native-evidence/`,
+one per cell, with an index listing all sixteen.
+
+One earlier run over the same four-DSO closure is also on record: native shared
+Debug, `zig build test smoke install -Druntime=false -Dlinkage=dynamic`,
+`exit 0`, "Build Summary: 35/35 steps succeeded; 46/46 tests passed",
+`smoke success`, `install s2cpp success`, in
+`…/s2-current-evidence/s2geometry-current-native-dynamic-Debug-2026-10-04T14-20-18.897947+00-00.json`.
+
+### What is still pending, and what the sixteen do not prove
+
+* The `-ls2cpp` metadata landed **during** that sweep. No one of the sixteen
+  receipts prints the generated `.pc`, and the copy installed under the native
+  dynamic prefix at the time did not yet name it. The metadata is
+  `SOURCE-CONFIRMED` from `addPkgConfig`; it is readable in an installed file
+  under the runtime-loaded dynamic prefix, which no gate quoted.
+* **No relocation was exercised.** Every cell installed into a prefix and left it
+  where it was. That the installed objects resolve their closure through
+  `$ORIGIN` alone is a property of the graph and of upstream's own published
+  `INSTALL_RPATH`, not an observed run.
+* No installed C or C++ consumer was compiled against any of these artifacts, the
+  standalone `consumer/` package has not re-run over this source, no Windows cell
+  and none of the six `check` targets has run since, the 53-platform matrix is
+  unrun, `package.nix` has never been evaluated or built, and the filtered fetch,
+  integrity replay and materialised consumer remain the driver's.
+
+## 68. A Nix licence-metadata correction, built and confirmed — 2026-10-04
+
+One metadata field, in `package.nix`, and nothing else. **No source file, no
+attribution record and no licence text changed**, and no gate has observed the
+correction.
+
+**What failed.** The first evaluation of this package through the Nix entry
+points stopped in `check-meta` rather than in a compile: nixpkgs' unfree check
+answered the `license` attribute and called the derivation unfree. The cause was
+the *shape* of the field, not its content. A single licence attrset is answered
+with `isFree` (`pkgs/stdenv/generic/check-meta.nix:118-122`), which understands
+an exception; a **list** is answered instead with `any (l: !l.free or false)`
+over its elements (`:131-133`), and the result of `WITH asl20 llvm-exception`
+carries no `free` attribute at all, so as a list element the LLVM exception reads
+as unfree. The same function is why that entry printed as `unknown` in a licence
+message: `showLicense` falls back to the literal `"unknown"` for an expression
+with neither `shortName` nor `fullName` (`:237-238`).
+
+**What changed.** `license` is now one top-level compound —
+`AND [ asl20 (WITH asl20 llvm-exception) bsd3 mit ]` — under which the `WITH` is
+resolved as `license && exception` (`lib/licenses/helpers.nix:14-15`), which is
+free. The compound is load-bearing rather than stylistic: the same four terms in
+a plain list fail the same check for the same reason. `licenseFile` stays
+`LICENSE`, and nothing else in the derivation moved.
+
+**The grant is unchanged, and that is the point.** `WITH asl20 llvm-exception` is
+nixpkgs' spelling of Apache License 2.0 WITH the LLVM exception
+(`lib/licenses/operators.nix:78`, `llvm-exception` at
+`lib/licenses/licenses.nix:1068-1071`), which is exactly the grant §67 attributes
+to the three compiler-shipped runtime components. The correction moves the same
+four terms from a shape the checker misreads into a shape it reads correctly. It
+grants nothing new, relaxes nothing, and relabels no file; the per-file terms
+stay where `NOTICE.md` puts them.
+
+**Status: `OBSERVED`.** Both derivations were then built: `nix build .#static`
+and `nix build .#shared` each completed `exit 0`, so the `check-meta` unfree
+failure above is resolved and the Nix rows in `README.md` §3 are no longer
+**Scope of that observation:** the flake outputs only. **At this revision** the
+canonical `devenv` shell had not been entered and `devenv.lock` did not exist;
+§73 records the devenv half as it stands after that, so this sentence is history
+at its own run and not a current claim. The
+run was taken at the revision before the configure-time banner print and the
+documentation changes — a final build over the frozen source, and the store
+hashes that identify it, belong to the driver and to the root ledger, never to
+these documents.
+
+## 69. The facade refuses a zero-length buffer, and this file caught up — 2026-10-04
+
+One documented contract, corrected where it was documented. **No API change and
+no upstream byte changed**: this entry moves two sentences of prose onto the
+side of the implementation and its own permanent test.
+
+**The contract, as `zig/root.zig` states it.** A list-returning or
+string-producing facade method is sized by its paired `…Count` method. A buffer
+too short for the content — **an empty one included** — is
+`error.BufferTooSmall`, with nothing written into it and **no required length
+returned**: `filled()` converts the bridge's own required-count report into that
+error instead of handing the count back, because slicing with the reported count
+before checking it would read past the end of the caller's buffer.
+`CellId.toToken` and `CellId.toDebugString` obey the same rule with the NUL
+counted — `buf.len` must exceed the text's length — and neither returns a length
+on the refusal either; a token buffer is sized from `toToken`'s published
+17-byte bound. A list that is genuinely empty has nothing to write and returns an
+empty slice rather than the error.
+
+**The raw C surface differs deliberately.** `zig/bridge.h` still reports the
+required length on the way to its refusal, and `out == nullptr` with `cap == 0`
+still means "tell me the count" — the ABI L19 records as unchanged. That is what
+the runtime loader's provider validation uses
+(`runtime/library.zig:125-127`, `:300-311`), so the two surfaces cannot be made
+to agree by changing the facade alone, and they are not meant to.
+
+**What was wrong.** `README.zig.md` stated the opposite in two places: an
+"output buffers are borrowed" bullet describing a list-returning call as two-pass
+with "pass an empty buffer to learn the required count", and a `BufferTooSmall`
+row saying "An empty buffer is never this: it is the sizing call, which succeeds
+and reports the required length". Both are corrected, and the `…Count`
+companions are named as the sizing route. A permanent test already asserted the
+implementation's side (`tests.zig:2111-2116`: an empty buffer is refused and
+nothing is written), so the documentation was the outlier.
+
+**Status.** `PENDING-VERIFICATION` at this revision: the behaviour is asserted
+by that permanent test and stated in `zig/root.zig`, and the documentation now
+agrees with both. No gate named in this entry has run over it, and no Nix,
+cross-target or consumer gate either.
+
+## 70. The canonical devenv tasks parse, and each one names its own SDK — 2026-10-04
+
+One file, `devenv.nix`, and two defects that between them stopped every devenv
+command in this SDK. Both were observed by the driver in its Nix/devenv
+acceptance run of **2026-10-04** (run root `nix-acceptance-20261004T175328Z`,
+receipts under `nix-acceptance-evidence/20261004T175328Z/s2geometry-*.log`;
+this SDK's `nix:build` gate ran 18:01:40Z–18:06:37Z), and both are fixed here.
+No build graph, package, flag default or task **name** changed: the task set is
+the same eight names, and every task still runs the `zig build` command the
+READMEs name.
+
+**1. The file did not parse.** All six applications of the local `zigTask` lambda
+were written `zigTask.{ … }`. Nix read `.{` as the start of an attribute
+*selection*, so it stopped with `error: syntax error, unexpected '{', expecting
+identifier or 'or' or '${' or '"'` at the first of the six, `devenv.nix:63` at
+that revision — and because the module cannot be evaluated, the failure was
+total: `devenv:info`, `devenv:tasks-list`, `devenv:shell-zig-version`,
+`devenv:shell-zig-env`, `devenv:consumer` and `devenv:integrity` all exited 1
+with that same traceback. All six now use the application form `zigTask { … }`,
+which is what the lambda's own binding asks for. This SDK is the only one of
+the eighteen in that run that used the select-then-apply spelling.
+
+**2. Every task ran in the caller's directory.** `devenv tasks run` and
+`devenv shell -- <name>` both inherit the working directory the command was
+typed in. That is correct devenv behaviour and this repository's runner depends
+on it, because the caller's directory is where devenv's `.devenv` state and
+`devenv.lock` are kept; it is not where `build.zig`, `consumer/` or
+`UPSTREAM.sha256` live. `$DEVENV_ROOT` names the same directory, so a task that
+`cd "$DEVENV_ROOT"` fails exactly as a relative path does. Each of the eight
+task bodies now begins with `cd` into this file's own directory, resolved as a
+string while the module is evaluated:
+
+```nix
+sdkRoot = lib.escapeShellArg (builtins.toString ./.);
+```
+
+`builtins.toString` is the whole point of that line. `${./.}` would give every
+`exec` a store context, and the store copy of this whole SDK — read-only, and a
+different tree from the one `sha256sum -c UPSTREAM.sha256` is a record of — is
+what the task would then read, install from and write into. A string has no
+context, so the generated shell program names the directory and nothing is
+copied. `escapeShellArg` quotes it for the shell that runs it.
+
+**3. The one task that installs now installs outside this repository.** `zig
+build` with no step name *is* the install step here (`build.zig:557-573`,
+`:580`), and its default prefix is `zig-out/` inside the package — on the volume
+this repository lives on, not on storage the caller chose for build output. The
+`sdk:build` task therefore passes `--prefix "$<chosen>/s2geometry/prefix"`, where
+the parent directory is **whatever the caller exported**: `$ZIG_LOCAL_CACHE_DIR`
+if it is exported, otherwise `$TMPDIR`. A shell that exported neither is told
+which two variables were missing and the task stops — this file writes no fixed
+path for build output, and in particular no system temporary filesystem, because
+`/tmp` is not scratch storage and `AGENTS.md` §11 forbids it. `package.nix`'s
+own `${TMPDIR:-/tmp}` default is the derivation's business inside a Nix sandbox
+that supplies `TMPDIR`, and it does not authorise a fallback in this shell.
+It is `sdk:build` alone that needs a prefix of its own: `test`,
+`test-release-safe`, `smoke`, `check` and `consumer` depend on no install step
+in this graph (the `smoke` and `test` steps, the `check` step, and
+`addConsumerStep`), so this graph installs nothing for them. `consumer` is not
+prefix-blind, though: `addConsumerStep` forwards `--prefix` to the nested build
+whenever the caller named one, so the consumer package's own install lands where
+the caller asked rather than in `consumer/zig-out`. Caller flags travel last, in
+`"$@"`, so a `--prefix`, `-Doption` or
+`-j` a caller does supply is the one that takes
+effect, and every task also carries the workspace's `-j8`.
+
+**Status.** `PENDING-VERIFICATION` at this revision, and the correction of a
+documentation error that the same run exposed: `README.md` §3 called these
+namespaced tasks "`devenv shell` scripts" named `build`, `test`, `smoke`,
+`check`, `consumer`, `fmt` and `integrity`, which is not what `devenv.nix`
+declares and not how a devenv task is run; both it and `README.zig.md` now name
+the real tasks and this contract. What the driver's run does establish is what
+was broken and what was not: of this SDK's seven devenv gates, the six that ran
+a command — `devenv:info`, `devenv:tasks-list`, `devenv:shell-zig-version`,
+`devenv:shell-zig-env`, `devenv:consumer` and `devenv:integrity` — each exited 1
+on the parse error above, and `devenv:canonical-integrity-mapping` failed with
+it because the observed catalogue was empty. `nix:build` in the same run passed
+`exit 0` with both `path:…s2geometry#static` and `#shared` realised
+(`/nix/store/w1wj643qzzvmgpz3fy3hf0bzbprc19df-s2geometry-0.14.0.drv`,
+`/nix/store/x02mvh145j9s39hpf93agjwf584h956j-s2geometry-0.14.0.drv`), and
+`repo:untouched` passed with an unchanged canonical-config digest set. **No
+devenv command has been run over this correction**, so nothing here claims a
+gate that ran: `build.zig`, `package.nix`, `flake.nix` and `build.zig.zon` are
+untouched by it, and the next devenv run over this SDK is the driver's. The
+reusable form of points 1–3 is `FORK-NOTES.md` L40.
+
+## 71. The nested consumer build inherits the global cache, `-j8` and `--summary all` — 2026-10-04
+
+`addConsumerStep` was already the most complete nested helper in this workspace:
+it forwards the target and CPU taken from the **query**
+(`Target.Query.zigTriple` and `Target.Query.serializeCpuAlloc`),
+`-Doptimize`, the caller's `-Dlinkage` and `-Druntime`
+when they were named, the system mode as `-fsys=s2`/`-fno-sys=s2`,
+`-Dwasi-sysroot`, `--zig-lib-dir`, the five executor switches,
+`--libc-runtimes`, the local cache with its
+`/consumer` subdirectory and `b.args` behind a `--`.
+Three arguments were still missing, and all three are required
+of every `zig build` entry point in this workspace (`AGENTS.md:157-158`,
+`README.md:447-449`). Source-only; nothing was executed.
+
+**1. `--global-cache-dir`, in two tokens.** The helper read the local cache
+(`b.cache_root.path`) and left its sibling alone, so a `--global-cache-dir` the
+caller chose never reached the nested `zig build`. That build resolved a global
+cache of its own, at a place this command line never names, and every
+compilation it makes is spawned with that one
+(`lib/std/Build/Step/Compile.zig:1477-1480`) — so what it builds for the
+compiler runtime, and anything it fetches, lands there. The block that forwards
+it sits immediately after the local `--cache-dir` one and says so in its own
+comment.
+
+* **The field is on the graph, not on `Build`.** `std.Build` itself carries
+  `build_root` (`lib/std/Build.zig:57`) and `cache_root` (`:58`);
+  `global_cache_root` is `pub const Graph`'s (`:112`, `:122`). The correct
+  spelling is therefore `b.graph.global_cache_root.path`, and the pinned
+  standard library writes it exactly that way where it does the same thing —
+  `Step.Compile` (`lib/std/Build/Step/Compile.zig:1479`) and `Step.TranslateC`
+  (`lib/std/Build/Step/TranslateC.zig:180`). Dispatch shorthand that omits the
+  `.graph` does not resolve, and this entry records the field, not the
+  shorthand.
+* **Two tokens, because that is the documented spelling.**
+  `--global-cache-dir [path]` (`lib/compiler/build_runner.zig:1675`), the same
+  two tokens both in-tree emitters write
+  (`lib/std/Build/Step/Compile.zig:1477-1478`,
+  `lib/std/Build/Step/TranslateC.zig:179-180`).
+* **No `/consumer` subdirectory**, unlike the local cache immediately above it.
+  The global cache is the shared content-addressed store every graph on the
+  machine writes into, and this is the very path the outer build hands each of
+  its own compilations (`lib/std/Build/Step/Compile.zig:1479`). A subdirectory
+  would be a second cache and a re-fetch of what this build already has, not a
+  stricter one.
+* **Guarded on the optional field, with no invented default.**
+  `std.Build.Cache.Directory.path` is `?[]const u8` and its documented meaning
+  is "`null` means cwd"; it exists to be handed to a child process
+  (`lib/std/Build/Cache/Directory.zig:10-14`), which is this line's whole job.
+  Under the pinned runner the branch is never taken: both cache directories
+  arrive as mandatory positionals and the runner is `fatal` without them
+  (`lib/compiler/build_runner.zig:53-54`), both `Cache.Directory` values are
+  built with `.path` set unconditionally (`:68-76`) and this one is assigned onto
+  the graph (`:89`). No `"."` is invented for the null case: it would name a
+  cache inside the consumer package, which `AGENTS.md:122-124` keeps out of the
+  package. The compiler's own `orelse "."` can afford that because its working
+  directory is a build root; this step's is a source package.
+
+**2. `-j8`, one token; `--summary all`, two.** The two `run.addArg` calls that
+follow the executor switches. A `Run`
+step's command is fixed there, and the outer build runner has already
+consumed the caller's own copies of both for itself
+(`lib/compiler/build_runner.zig:422-427`, `:262-269`); what it forwards to a step
+is only what followed a `--` (`:428-429`), which is the consumer **program's**
+arguments and not the nested build's options. Left to derive its own width the
+nested build runs at `cpu_count - 1`
+(`lib/std/Io/Threaded.zig:1634-1639`) — a different number on every machine, and
+never the eight this workspace asks for. `-j8` is one argument because that is
+what the runner parses (`mem.cutPrefix(u8, arg, "-j")`, `:422-425`); `--summary
+all` is two because the runner reads the mode as the argument after the option
+(`:262-269`). The nested build's summary is then the record of which steps the
+consumer package actually ran, instead of one line no receipt here is read
+against.
+
+**What did not change.** No public option was added, renamed or removed, and no
+`-D` option exists for any of this: `--global-cache-dir` is the compiler's own
+standard option, exactly as `--zig-lib-dir` already was. The helper's signature
+is unchanged, so both call sites — the bundled graph (`build.zig:649`) and the
+system-mode graph (`:1482`) — are untouched and no caller migrates. Preserved
+verbatim: the query-derived target and CPU, the optimise mode, the
+caller-named-only `-Dlinkage`/`-Druntime`, the system mode in both spellings,
+`-Dwasi-sysroot`, `--zig-lib-dir`, the five executor switches and
+`--libc-runtimes`, the existing `--cache-dir` subdirectory, the `run`/`install`
+choice made by `hostCanExecute`, and `b.args` behind its `--`. Default linkage,
+the `-l` bindings and the WASI sysroot default are untouched. One documentation
+consequence for the entries above, and it is a rule rather than a number: this
+helper is edited by later entries, so a `build.zig` line number quoted inside it
+goes stale on the next change to it. `§70`'s pointer into the consumer region and
+`§56`'s pointer into the handover block are therefore cited by symbol — the
+`addConsumerStep` body and its closing `b.args` block, and `consumer/build.zig`'s
+`run_exe.addArgs` — and no count is translated between entries.
+
+**Status: `PENDING-VERIFICATION`, narrowed by §74.** No build, no cross-target
+gate and no Nix or devenv gate ran over this change. What it still owes the
+driver: `zig build consumer` over the corrected source (b) with an explicit cross
+target that resolves to the install path — `-Dtarget=wasm32-wasi` — and (c) with
+a target that resolves to a run through an allowed executor, plus (d) the
+`-fsys=s2` system-mode consumer, which is the route that proves the forwarded
+mode and the installed C++ provider's headers still reach the nested graph.
+
+**Owed item (a) is discharged.** §74's epoch runs the step natively with an
+explicit `--cache-dir` **and** `--global-cache-dir` on both linkages and both
+dispatch modes, and the nested argv it prints carries the global cache unchanged,
+the `/consumer` local subdirectory, `-j8` and `--summary all` in every case. The
+summary the nested build prints is therefore in a receipt, not just in source.
+The system-mode route (d) is **not** discharged by it: every case forwarded
+`-fno-sys=s2`, so the installed-library consumer remains unobserved.
+
+## 72. The nested consumer build inherits the caller's install prefix — 2026-10-04
+
+`addConsumerStep` forwarded every cache directory, the toolchain, the mode and
+the executor switches, and still left the one thing that decides where the
+consumer package's own artifacts land. `zig build consumer --prefix <dir>`
+installed the nested build's output into `consumer/zig-out` — a build artefact
+inside a source package, which `AGENTS.md:122-124` keeps out of one — while the
+outer graph's prefix went unnamed, so a receipt quoting an installed consumer
+tree would have pointed at a directory the caller never asked for. The prefix
+now travels as two tokens, `--prefix` then the path, in the block immediately
+after `--global-cache-dir` and immediately before the `--` that ends the nested
+build's option parsing.
+
+* **The value is `b.install_prefix`, this invocation's resolved `--prefix`,** not
+  a re-resolved one and not an invented default. It is sent **only when the
+  caller named one**, and the test for "named one" is this graph's own default:
+  the value is compared against `b.build_root.join(… "zig-out")`, which is what
+  `b.install_prefix` holds when no `--prefix` was passed. That is the same
+  caller-named-only rule `-Dlinkage` and `-Druntime` already follow, and it
+  means a caller who named none gets no invented argument. It does **not** mean
+  the nested build then installs where this graph would: its working directory
+  is `consumer/`, so with no `--prefix` on either side it resolves
+  `consumer/zig-out`. That is the un-named case, it is the case the guard leaves
+  alone, and the relay exists for the named one.
+* **A relative value is made absolute against `b.graph.cache.cwd` before it is
+  handed on.** This step's working directory is `consumer/`, so a relative
+  `--prefix` would otherwise resolve inside the consumer package instead of
+  against this build's root, and the same spelling would mean two different
+  directories in the two graphs.
+* **Two tokens, not `--prefix=<path>`,** matching `--zig-lib-dir`,
+  `--cache-dir`, `--global-cache-dir` and `--libc-runtimes` in the same command,
+  and the spelling the build runner parses
+  (`lib/compiler/build_runner.zig`).
+* **`DESTDIR` needs no forwarding.** The nested build inherits the environment
+  this one ran with.
+
+**What did not change.** No public option was added, renamed or removed, and no
+`-D` option exists for this: `--prefix` is the compiler's own standard option.
+The helper's signature is unchanged, so both call sites — the bundled graph and
+the system-mode graph — are untouched and no caller migrates. Preserved
+verbatim: the query-derived target and CPU, the optimise mode, the
+caller-named-only `-Dlinkage`/`-Druntime`, the system mode in both spellings,
+`-Dwasi-sysroot`, `--zig-lib-dir`, the five executor switches and
+`--libc-runtimes`, `-j8`, `--summary all`, the `--cache-dir` subdirectory, the
+unchanged `--global-cache-dir`, the `run`/`install` choice made by
+`hostCanExecute`, and `b.args` behind its `--`. No child flag was added through
+`b.args`: those are the consumer program's arguments, not the nested build's
+options, and `--prefix` is this package's own bookkeeping like every other
+option before that separator.
+
+**Status: `PENDING-VERIFICATION`, narrowed by §74.** Source-only at this entry. No
+cross-target gate and no Nix or devenv gate ran over this change.
+
+**The first of the three owed runs is discharged.** §74's epoch runs
+`zig build consumer --prefix <dir>` natively on both linkages and both dispatch
+modes, and records the nested prefix as `present`, `propagated` and
+`resolves_into_sdk_tree: false` on all nine cases — the installed consumer tree
+landing where the caller named it, not in `consumer/zig-out`.
+
+**Still owed:** a **relative** `--prefix`, which no case in that epoch supplied —
+every prefix there is absolute, so the absolutisation against
+`b.graph.cache.cwd` remains `PENDING-VERIFICATION` — and one run with **no**
+`--prefix` at all, which is the suppression branch and the case that must still
+produce `consumer/zig-out`.
+
+## 73. The canonical devenv tasks evaluate again, and every devenv gate passes — 2026-10-04
+
+A bounded before/after pair, and **only** a bounded one. Both runs have
+`"scope": "devenv"` and `"gates_not_run": ["nix:build"]`, so nothing here says
+anything about the Nix outputs, the install, or the sixteen native cells.
+
+**Before** — `…/nix-acceptance-evidence/20261004T215136Z/s2geometry-index.json`,
+run `20261004T21:51:36Z`–`21:51:44Z`, `"status": "fail"`, `"gates_unsupported":
+[]`, `"problems": []`, and seven gates failed, each `exit_code 1`:
+`devenv:info`, `devenv:tasks-list`, `devenv:canonical-integrity-mapping`,
+`devenv:shell-zig-version`, `devenv:shell-zig-env`, `devenv:consumer` and
+`devenv:integrity`.
+
+**The cause was one omitted argument, and it was an evaluation error rather than
+a task failure.** `zigTask` in `devenv.nix` takes `args` as a mandatory
+parameter with no default, and the `sdk:build` caller passed none. A mandatory
+function argument with no default has no value to bind, so the module produced
+no catalogue at all, and every symptom follows from that one fact: `devenv:info`
+recorded empty `sections_seen`, `tasks_seen` and `packages_seen`; `devenv:tasks-list`
+recorded `"no JSON array or object decoded from 0 candidate line starts; the
+first bracket is not the JSON"` over 13214 bytes; and
+`devenv:canonical-integrity-mapping` reported `"sdk:integrity is not observed:
+tasks list --json"` while its own `declared_in_devenv_nix` observation still found
+`"sdk:integrity" = {` in `devenv.nix`. **A declared task that no observed
+catalogue contains is the shape of an evaluation failure**, not of a missing
+task, and reading it as the second is what makes the first hard to see.
+
+**The repair is one explicit `args = "";` at the `sdk:build` caller**, and the
+mandatory parameter is kept. Every other caller passes a real step name, and an
+empty string is exactly what "the default step, no step name" is; giving `args`
+a `""` default instead would have left the same omission expressible a second
+way, at every future caller, with nothing to catch it. `installs = true` and the
+prefix lines beside it are unchanged. No SDK source file, no `build.zig`, no
+`build.zig.zon` and no `package.nix` was touched.
+
+**After** — `…/nix-acceptance-evidence/20261004T215554Z/s2geometry-index.json`,
+run `20261004T21:55:55Z`–`21:57:14Z`, `"status": "pass"`, `"gates_failed": []`,
+`"gates_unsupported": []`, `"problems": []`, all eight gates `exit_code 0`:
+`devenv:info` (3.86 s), `devenv:tasks-list` (2.07 s),
+`devenv:canonical-integrity-mapping`, `devenv:shell-zig-version` (4.926 s),
+`devenv:shell-zig-env` (0.496 s), `devenv:consumer` (63.647 s, mapped to
+`sdk:consumer`), `devenv:integrity` (1.023 s, mapped to `sdk:integrity`, whose
+`exec_text` the mapping gate read as `sha256sum -c UPSTREAM.sha256`), and
+`repo:untouched` (`before_sha256` == `after_sha256` ==
+`83b674e5766bde040c1c8eaa31e3433ae88e5d7cefc76c3b90b2a83d1521c367`, 4650 entries,
+`identical: true`, `canonical_config_changed: []`).
+
+**The catalogue the failing run could not produce is now observed.** 13 task
+names — `devenv:container:copy`, `devenv:enterShell`, `devenv:enterTest`,
+`devenv:files`, `devenv:files:cleanup`, `sdk:build`, `sdk:check`, `sdk:consumer`,
+`sdk:fmt`, `sdk:integrity`, `sdk:smoke`, `sdk:test`, `sdk:test-release-safe` —
+and 5 packages: `bash-interactive-5.3p15`, `gdb-17.2`,
+`pkg-config-wrapper-0.29.2`, `shellcheck-0.11.0`, `zig-0.16.0`. `devenv:info`
+reports `env`/`packages`/`tasks` with 7/6/13 entries. That is the real answer to
+§70's `devenv:info` and `devenv:tasks-list` rows, at this revision.
+
+**What this entry does not establish, stated as sharply as the receipt states
+its scope:**
+
+* `sdk:build`, `sdk:test`, `sdk:test-release-safe`, `sdk:smoke`, `sdk:check` and
+  `sdk:fmt` were **not** exercised. The `--prefix` under `$ZIG_LOCAL_CACHE_DIR`
+  that §70 introduced is therefore still unobserved, and so are the install and
+  the whole native matrix. `nix:build` is `gates_not_run` in both runs.
+* `devenv:consumer` exited 0 **as a task**. The receipt records the task's
+  `exit_code`, `elapsed_seconds` and `output_file`, and nothing about which
+  sub-command the nested build chose, whether the consumer program executed,
+  which prefix its install used, or what the forwarded `-j8`, `--summary all`
+  and cache directories did. So this moves the consumer step from *never run
+  over this source* to *ran, exit 0, at task level* — and it moves **nothing** in
+  decision 20, decision 21, §71 or §72, which stay `PENDING-VERIFICATION`: that
+  run supplied no caller argument after `--` and no `--prefix`.
+* The seven-gate failure above stands as history at its own run. It is not
+  upgraded, and its `devenv:consumer` failure is the same evaluation error as the
+  other six, so it says nothing about the consumer step either way.
+* `repo:untouched` compares the tree before and after **this** run and asserts
+  only that the run did not change it. It is not a claim that this wave's source
+  is unmodified, and this entry and its companion edits change Markdown.
+
+**Superseded in part by §74**, which observes decision 20 and §§71–72 over this
+source from a separate, later run. The claim above was true at its own run and is
+history, not a current statement about those rows.
+
+## 74. The nested consumer delivery, over nine cases and both linkages — 2026-10-04
+
+The parent's nested-delivery proof, epoch `20261004T220323250122Z-515d06adcbbf`,
+ran nine cases against this SDK and **all nine pass**. It is the receipt §§71 and
+72 were waiting for, it is the first gate anywhere in this workspace to exercise
+the `-Dlinkage`/`-Druntime` forwarding, and it is bounded: it says what it
+exercised and nothing else. `s2geometry` appears in **no** non-pass row of that
+epoch.
+
+**The nine cases.** Four routes, two linkages and two dispatch modes:
+`nested-default-linked-static`, `nested-default-linked-dynamic`,
+`nested-default-loaded-static`, `nested-default-loaded-dynamic`,
+`nested-explicit-linked-static`, `nested-explicit-linked-dynamic`,
+`nested-explicit-loaded-static`, `nested-explicit-loaded-dynamic`, and
+`nested-no-provider`. The eight semantic cases each exited 0 with the reason "the
+program ran and every expected pattern appeared in its own output"; the ninth is
+a refusal case and exited 1 by design. Step counts: 10/10 linked static, 9/9
+linked dynamic, 6/6 on both loaded routes.
+
+**What the nested argv carries in every one of the nine:** `-Doptimize=Debug`;
+`-fno-sys=s2`, matching this SDK's declared native system flags exactly and
+nothing more; `--zig-lib-dir` pointing at the compiler's own library directory;
+`-j8`; `--summary all`; `--cache-dir` naming **this SDK's own cache root** with
+the `/consumer` subdirectory; `--global-cache-dir` with the caller's global cache
+**unchanged**; and `--prefix` with the caller's prefix. That is §71 observed —
+the global cache, the job width and the two-token summary all reached the nested
+build, and no guard invented a value for any of them.
+
+**The prefix relay is §72 observed.** The prefix row is `present: true`,
+`propagated: true` and `resolves_into_sdk_tree: false` on all nine cases, and the
+check's own note says that a nested build resolving its own `zig-out` inside the
+SDK tree would not count as propagation. Two tokens, the caller's value, landing
+outside this repository — exactly the arrangement `CHANGELOG.md` §72 describes.
+
+**Target and CPU.** The four `default` cases named no target, and the nested argv
+carried `-Dtarget=native -Dcpu=native`; the check records those as the nested
+build's own answer and does not judge them. The four `explicit` cases named
+`x86_64-linux-gnu` and `baseline`, and the nested argv carried exactly those,
+judged and matched. Both routings are therefore recorded and only the explicit
+one is asserted — the distinction the check itself draws, kept here rather than
+flattened into a single claim.
+
+**Linkage and dispatch mode are the caller's, on every case.** `-Dlinkage` carried
+`static` or `dynamic` as asked, `-Druntime` carried `false` on the linked routes
+and `true` on the loaded ones. Both branches of the caller-named-only rule that
+decision 20 and §71 state are now exercised.
+
+**Program argv, both hops — decision 20 observed.** In the four `loaded` cases the
+caller wrote `zig build consumer … -- --provider <abs path>`; the nested argv
+carries `--` followed by that same `--provider` pair verbatim, and the receipt's
+`forwarded_arguments` is exactly those two tokens. The provider is the
+unversioned `libs2bridge.so` in this SDK's own installed dynamic prefix, chosen by
+name after both the unversioned and the versioned candidates were examined. **The
+child environment carried no provider variable at all**: `S2GEOMETRY_TEST_PROVIDER`
+is on the excluded list and `provider_variables_absent_from_child` is true. So the
+provider reached the program as an argument and by no other route, and there is
+no CLI/provider environment handoff left ambiguous.
+
+**The refusal case is a pass.** `nested-no-provider` is handed no provider and no
+fallback; the program ran and printed `error: NoProviderConfigured`, exit 1, under
+`Build Summary: 4/6 steps succeeded (1 failed)`. A refusal that names its own
+reason and exits 1 is what this route exists to show, and the failed step is the
+program's — not a compile or a link failure. `compile_side_signals` reports no
+compile error and `source_diagnostic_count` 0 in every case, and the source
+closure is unchanged across the whole epoch: 2023 files, and the same stable
+source hash before and after each case.
+
+**What this receipt does not establish. The rows below stay exactly as they
+were.**
+
+* **No consumer-cache alias is configured for this SDK.** The driver records
+  `not_configured` with the reason "no consumer-cache alias metadata names this
+  SDK; the nested build keeps its own cache under the SDK cache root, and nothing
+  here is created or copied". **No cache-fallback guard is claimed to have passed**
+  by this entry or by anything it cites, and nothing is relabelled from *not run*
+  to *run* on the strength of an alias this SDK does not have.
+* **The `--prefix` suppression branch is still unobserved.** All nine cases named
+  a prefix. None left it at this graph's own `<build root>/zig-out`, so the guard
+  that sends nothing in that case is still `PENDING-VERIFICATION` — and so is the
+  absolutisation of a *relative* `--prefix`, because every prefix in this epoch is
+  absolute. §72's status is narrowed here, not cleared.
+* **Every case is native.** No cross target, no foreign executor, no
+  `--libc-runtimes`, and no `-fsys=s2` system-mode consumer appears in the epoch.
+  Decision 21's second gate is still `NOT RUN` on a foreign GNU-libc target; what
+  is observed here is the native answer being `run`.
+* The Nix scope is outside this epoch exactly as it is outside §73's.
+* The six-target `check` matrix, the Windows cells, the 53-platform matrix, the
+  filtered fetch and the whole-record integrity replay are untouched by it, and
+  no gate in this epoch says anything about any of them.
+
+## 75. The system mode's selected metadata and C++ owner are stated, and four source-bound gates are recorded — 2026-10-05
+
+**Condition.** §67 and §68 recorded the bundled graph's C++ runtime owner and
+its `pkg-config` entry, and §59 recorded what `-fsys=s2` declines to decide. Two
+selections the mode makes were in the graph and out of the record, and the
+53-platform matrix and the six-target `check` had no current receipt.
+
+**What the system mode selects, `SOURCE-CONFIRMED` from `build.zig` and verified
+by no run.** The bridge module and the translation step each ask pkg-config for
+the installed package with `linkSystemLibrary(system_pkg_config_module, .{
+.use_pkg_config = .force, .preferred_link_mode = installed_linkage })`
+(`build.zig:1364-1367`, `:1393-1396`). `.force` rather than `.yes` is deliberate on
+this route: the `.yes` fallback is a bare `-l` that may name nothing, and a mode
+whose whole contract is to bind one installed library must stop rather than
+guess. `installed_linkage` is the **selected** installed flavour — `.dynamic`
+when the caller named no `-Dlinkage`, because a distribution's `-l` is its
+shared library, and the caller's own value when they named one
+(`build.zig:511`, `:541-542`). The C++ runtime owner is chosen by the same
+predicate as the bundled route: `installed_shared_cpp = sharedCppOwner(target,
+installed_linkage)` (`build.zig:1340`) asks whether the installed delivery is a
+dynamic ELF one, and that one answer configures the headers for the compiled
+`libs2cpp` ABI (`cpp_runtime.configureHeaders`, `:1351` and `:1412`) and so
+decides whether the mode binds the installed runtime at all. **No `-fsys=s2`
+command has been run in this workspace** — no installed `libs2` or Abseil was
+observed on any machine here — so no result is claimed for the mode, and this
+entry states two selections, not two passes.
+
+**Four source-bound runs, each read out of a receipt the driver wrote, each
+holding one source stamp for its whole run.**
+
+* `zig build check` over the six declared compile targets, 2026-10-05, label
+  `baseline-s2geometry-check`, baseline run `20261005T014547Z-797a73f2`: **exit
+  1**, `Build Summary: 44/60 steps succeeded (6 failed)`,
+  `failure_reason: the gate exited 1`, six targets seen. The six failures are the
+  `wasm32-wasi` steps of this graph's own refusal, `error: UnsupportedWasiProvider:
+  wasm32-wasi requires -Dwasi-sysroot=<complete WASI SDK 34+ sysroot with
+  WASIp1-threads EH C/C++ providers>; bundled libc++ lacks the filesystem/exception
+  closure. No core sources are omitted.`, because the gate invocation names no
+  `-Dwasi-sysroot=`. **That is a missing flag in the gate, not a source defect**,
+  and the five non-WASI cells compiled and linked.
+* `cross-test --jobs 8 --build-jobs 8`, 2026-10-04, run
+  `20261004T221720228710Z-45046`, receipt `s2geometry-53-target-8.json`, source
+  stamp `14c785720d6a…` identical before and after: **exit 1**, **20 pass,
+  28 build-only, 5 build failures, 0 run failures** of 53, 20 cells executed at
+  46 tests each and every executed cell passed all 46. The five build failures
+  are `aarch64-macos`, `x86_64-macos`, `aarch64-maccatalyst` and
+  `x86_64-maccatalyst`, each `error: unable to find framework 'CoreFoundation'.
+  searched paths:  none` — the link-stage form of the Apple-SDK dependency this
+  graph declares at `build.zig:933` and cannot supply on a Linux host — and
+  `wasm32-wasi` with the refusal above. Four external-provider cells and one
+  deliberate refusal. A build-only cell compiled and had no runner, so it is
+  coverage and not a pass.
+* Native final wave, `native-final-evidence/20261004T233628757747Z-69351`: eight
+  cells, both linkages × four modes, `zig build test smoke install
+  -Druntime=false`, eight `exit 0`, each `32/32 steps succeeded` static and
+  `39/39` dynamic, each `46/46 tests passed`.
+* Own-loaded wave, `loaded-final-evidence/20261004T232823091897Z-23133`: the same
+  eight shapes under `-Druntime=true`, eight `pass`, each `33/33` static and
+  `36/36` dynamic, each `46/46 tests passed`.
+
+**What these runs supersede and what they do not.** §74's closing sentence —
+that the six-target `check` matrix and the 53-platform matrix are untouched and
+no gate says anything about them — is superseded for those two gates by the two
+receipts above, and stands for everything else it names. Each run holds one
+source stamp, so every build-graph, header, helper and normalisation edit made
+afterwards, including §§67 to 74, is outside all four. The `-ls2cpp`
+`pkg-config` metadata inside a gate, the system-mode consumer, any `-fsys=s2`
+command, the whole-record integrity replay, the filtered package round and every
+job in `.github/workflows/verify.yml` still have no receipt over this tree, and
+this entry claims none.
+
+**Two earlier claims are superseded by this entry, and they stay visible where
+they were made rather than deleted.** §25 and §59 said the mode "links `-ls2`
+and the 26 `absl_*` libraries … by their installed names" and cited a
+transcription at `build.zig:706-733`. **No `-l` stem list exists in this graph
+anywhere.** `addSystemMode` resolves one pkg-config package — the project's own
+`s2geometry` (`build.zig:403-407`) — on the bridge module and on the translation
+step (`build.zig:1363-1366`, `:1392-1395`), and the comment at `:1357-1359`
+names the change for what it is: one package rather than 27 `-l` stems. The
+installed `.pc` carries the closure in dependency order and the one `-I` that
+selects the installed `s2/`+`absl/` families. The corrected sentences are in §59
+above, in `FORK-NOTES.md` decisions 10 and 22, and in `README.zig.md` §
+`-fsys=s2`: link an installed s2 instead.
+
+**Files.** `README.md`, `README.zig.md`, `FORK-NOTES.md`, `CHANGELOG.md`. No
+upstream C++ byte, vendored Abseil byte, header, test, data file or licence file
+changed, and no algorithm, declaration, option, default, step or target changed.
+No build, test, matrix, Nix, devenv, formatter or git command was run for this
+entry.

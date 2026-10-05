@@ -14,7 +14,10 @@ pristine and current digests, each keeps its upstream licence header byte for
 byte, and each carries a prominent change notice. Everything else is exactly
 what upstream shipped.
 
-Two upstream trees are carried, and the second is a dependency of the first.
+Two upstream trees are carried, and the second is a dependency of the first. A
+third work's **code is compiled but not carried** on one route — the build
+compiler's own C++ runtime — and that is described where it belongs, below and
+in `NOTICE.md`, rather than left to be found in a build comment.
 
 ## Upstream
 
@@ -61,7 +64,7 @@ replaced:
 | Where | Says | Used here |
 |---|---|---|
 | `CMakeLists.txt:71-75` (`FetchContent_Declare(absl URL …/20250814.1.zip)`) | `20250814.1` | **yes** |
-| `README.md:59-61` | `20250814` (link text points at the `20250814.1` tag) | no — same release, shorter label |
+| `README.upstream.md:59-61` (upstream's README, at `README.md` inside the pin) | `20250814` (link text points at the `20250814.1` tag) | no — same release, shorter label |
 | `src/MODULE.bazel:11` (`bazel_dep(name = "abseil-cpp", version = "20260107.1")`) | `20260107.1` | no — a later release, for the Bazel build only |
 
 `CMakeLists.txt:24-27` explains why the exact Abseil matters and not just the
@@ -232,9 +235,12 @@ There is no import script and no submodule.
 
 1. The s2geometry repository at the pinned commit is unpacked into this
    package's root, so `src/`, `CMakeLists.txt`, `LICENSE`, `NOTICE`, `AUTHORS`,
-   `CONTRIBUTORS`, `CONTRIBUTING.md`, `README.md`, `Config.cmake.in`,
-   `.clang-format`, `setup.py` and `pyproject.toml` are at the paths upstream
-   put them at.
+   `CONTRIBUTORS`, `CONTRIBUTING.md`, `Config.cmake.in`, `.clang-format`,
+   `setup.py` and `pyproject.toml` are at the paths upstream put them at. The
+   one exception is upstream's README: since 2026-10-04 those exact bytes live
+   at `README.upstream.md`, and `README.md` is this fork's own README. The
+   bytes are unchanged — `UPSTREAM.sha256` records the same digest under the
+   new name — and no other file moved.
 2. The Abseil `20250814.1` release is unpacked whole into
    `vendor/abseil-cpp`.
 3. `src/` is byte-identical to the pin **except for one file**, and Abseil except
@@ -252,17 +258,33 @@ There is no import script and no submodule.
 4. Every fork-owned file is added around them, and every one of them is named
    in `NOTICE.md`.
 
+### Reading upstream's README
+
+`README.upstream.md` is upstream's file, kept byte-for-byte, and it is the
+document to read for upstream's own build instructions, its Python bindings and
+its API/ABI stability statement. This fork's `README.md` does not restate it and
+does not contradict it: the Zig build, the C bridge and the Nix packaging exist
+in addition to what upstream describes, and every fork-specific statement lives
+in `README.md`, `FORK-NOTES.md` and `CHANGELOG.md`.
+
 ## What this fork is
 
 ### What is compiled
 
-One graph, three static libraries, no network access and no system copy:
+One graph, three native libraries, no network access and no system copy:
 
 | Artifact (GNU/ELF targets) | Artifact (`x86_64-windows-gnu`) | Contents | Linkage |
 |---|---|---|---|
 | `libabsl.a` | `absl.lib` | 153 Abseil translation units | — |
 | `libs2.a` | `s2.lib` | 108 s2geometry translation units | links `libabsl.a` |
 | `libs2bridge.a` | `s2bridge.lib` | `zig/bridge.cc` | links `libs2.a`; forwards the two upstream header installs; installs `zig/bridge.h` as `s2geometry_bridge.h` |
+
+That table is the static delivery, which is this SDK's default. `-Dlinkage=dynamic`
+delivers the same three as shared objects with upstream's own sonames, and on an
+**ELF target** adds a fourth, runtime-only artifact: `libs2cpp.so.0.16.0`, the
+build compiler's own shipped libc++/libc++abi/libunwind, compiled and installed
+by `build_support/cpp_runtime.zig`. The backend dependency closure below draws
+the difference, and `CHANGELOG.md` §67 is the full account.
 
 `build.zig` names each `addLibrary` `absl`/`s2`/`s2bridge`, and Zig appends the
 target's own suffix, so the bridge archive is `libs2bridge.a` on the ELF
@@ -278,10 +300,14 @@ exit 0, "Build Summary: 12/12 steps succeeded", `install absl`, `install s2`,
 
 The 108 are the `add_library(s2 ...)` block of `CMakeLists.txt:141-249`, in
 upstream's order and spelling, copied verbatim into
-`build_support/s2_sources.zig`. `build.zig` asserts the count at comptime, so a
-truncated list fails the build rather than the link.
+`build_support/s2_sources.zig`. The list is the authority and no count guards
+it: an earlier revision asserted both list lengths at comptime, that assertion
+is what first exposed the one omitted Abseil unit, and it has since been
+removed rather than corrected (`CHANGELOG.md` §66, `FORK-NOTES.md` decision 26).
 
-The 153 are every `absl_cc_library` `SRCS` entry in the vendored tree except
+The 153 are every `absl_cc_library` source entry in the vendored tree — from
+`SRCS` **or** `HDRS`, because upstream's own `absl_cc_library` compiles both
+together (`vendor/abseil-cpp/CMake/AbseilHelpers.cmake:234`, `:260`) — except
 fourteen that are `TESTONLY` or carry a `GTest::` dependency in their own
 declaration:
 
@@ -620,12 +646,22 @@ ReleaseSafe, with smokes, Debug installation and a real source consumer
 (`local://foundation-cross-test-final-native-s2geometry.json`), and the six
 compile-only cross targets gave four passes and two dependency failures.
 
-**For the current tree, every full-SDK native, matrix, smoke, fetch and
-materialised-package result is `PENDING-VERIFICATION`.** The corrections have
-landed; no gate in this package has been run against them yet. Full 53-cell
-outcomes and final package closure are the driver's under
-`FORKS.json.cross_test_wave`, and are not inferred from the earlier native
-rounds reproduced below.
+**For the current tree the native matrix is observed, and everything else is
+`PENDING-VERIFICATION`.** Sixteen cells — `-Dlinkage` (static, dynamic) ×
+`-Druntime` (false, true) × Debug / ReleaseSafe / ReleaseFast / ReleaseSmall —
+each `exit 0`, each printing "46/46 tests passed" and `smoke success`, with step
+counts of 39/39 (native shared), 32/32 (native static), 36/36 (runtime-loaded
+dynamic) and 33/33 (runtime-loaded static). The receipts are timestamped JSON
+under `/home/tmp2/gertullj/scratch/foundation-libs/contract-physics-lua/current-native-evidence/`,
+one per cell, with an index listing all sixteen.
+
+**Not covered by those sixteen, and still open:** the six compile-only cross
+targets, the full 53-cell `cross-test` matrix, the standalone `consumer/`
+package, an installed C or C++ consumer compiled against the install set, a
+**relocated** shared install actually loading its closure, the Nix derivations,
+and the filtered fetch, integrity replay and materialised consumer. Those belong
+to the driver under `FORKS.json.cross_test_wave` and are not inferred from the
+earlier native rounds reproduced below.
 
 #### Historical native/boundary rounds before the current eight upstream changes
 
@@ -853,8 +889,11 @@ macOS boundary is unchanged and unresolved: nothing in this fork has supplied
 
 ### The backend dependency closure
 
-Complete, and it is exactly two trees. On `x86_64-windows-gnu` the three
-archives carry the `.lib` spelling, and the graph is the same:
+Complete, and it is exactly two **carried** trees. On `x86_64-windows-gnu` the
+three archives carry the `.lib` spelling, and the graph is the same. On an ELF
+target with `-Dlinkage=dynamic` one further installed object joins the closure;
+it is not a third tree carried in this repository, and the second diagram below
+says where it comes from:
 
 ```
   ELF targets                 x86_64-windows-gnu
@@ -868,9 +907,48 @@ archives carry the `.lib` spelling, and the graph is the same:
        -> libc / libc++ / winpthreads, per target
 ```
 
-* There is **no** googletest, Google Benchmark, OpenSSL, boringssl, pcre, zlib,
-  or any other third-party library in any compiled artifact. The only upstream
-  files in this tree that mention `<openssl/bn.h>` is
+```
+  -Dlinkage=dynamic, ELF         static, and every non-ELF delivery
+
+  libs2bridge.so.0.14.0  --.
+  libs2.so.0.14.0         DT_NEEDED
+  libabsl.so.2508.0.0    --> libs2cpp.so.0.16.0  --> libc
+                                 |
+  libc, per target               the consumer's own C++ runtime,
+                                 or the one named for the target
+```
+
+`libs2cpp` is the build compiler's own shipped C++ runtime — libc++, libc++abi
+and libunwind from Zig 0.16.0 at source commit
+`24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8`, following that compiler's own
+`src/libs/libcxx.zig` — compiled by `build_support/cpp_runtime.zig` from
+`b.graph.zig_lib_directory`, and installed with the three verbatim `LICENSE.TXT`
+files that cover it. It exists because Zig's ordinary *static* C++ runtime
+archive is built with hidden exports, and a hidden-exports archive reused across
+images cannot preserve `std::locale` facet identity: the earlier shared closure
+gave every image its own registry, and S2's log stream crossing an image
+boundary died in `std::use_facet`. `libs2cpp` is therefore built with upstream's
+own shared-library visibility annotations (`_LIBCPP_BUILDING_LIBRARY` beside
+`-fvisibility=hidden`, so `_LIBCPP_EXPORTED_FROM_ABI` resolves to
+`visibility("default")`, and without `_LIBUNWIND_HIDE_SYMBOLS`), and the three
+S2/Abseil modules are compiled against its ABI (`_LIBCPP_ABI_VERSION=1`) instead
+of embedding their own. No file in this repository is edited to do it, and no
+other route builds it: `sharedCppOwner(target, linkage)` is `linkage == .dynamic`
+together with `target.result.ofmt == .elf` (`build.zig:868-870`).
+
+**The installed copy and the build-cache copy are different artifacts.** On that
+route `addNativeGraph` runs twice: the published facade graph carries a
+cache-aware runtime search path for the executables in this tree, and the
+install graph carries `$ORIGIN` (ELF) or `@loader_path` (Darwin) and nothing
+else, so no installed object names a build directory. The three libraries are
+compiled a second time for the install tree; `libs2cpp` is configured
+identically in both and is therefore one compile step.
+
+* Apart from the compiler's own C++ runtime on the one route above — already
+  credited in `NOTICE.md`, and named in the diagram with it — there is **no**
+  googletest, Google Benchmark, OpenSSL, boringssl, pcre, zlib or any other
+  third-party library in any compiled artifact. The only upstream file in this
+  tree that mentions `<openssl/bn.h>` is
   `src/s2/util/math/exactfloat/bignum_test.cc`, and that is an upstream *test*
   this package does not compile.
 * Thread support comes from the C library the build already links: `libc`
@@ -1036,9 +1114,9 @@ The steps, in the order they have to happen:
    `TESTONLY`/`GTest::` exclusions, and replace
    `build_support/absl_sources.zig`. Update the fourteen excluded paths in its
    header comment at the same time.
-4. Re-check `build.zig`'s two comptime counts and every CMake/Abseil fact that
-   a comment in `build.zig`, `build_support/platform_flags.zig`, this file or
-   `NOTICE.md` cites by line number: `CMAKE_CXX_STANDARD` and
+4. Re-check every CMake/Abseil fact that a comment in `build.zig`,
+   `build_support/platform_flags.zig`, this file or `NOTICE.md` cites by line
+   number: `CMAKE_CXX_STANDARD` and
    `CMAKE_CXX_EXTENSIONS` (`CMakeLists.txt:29-32`), the directory-scope
    `add_definitions` for `ABSL_MIN_LOG_LEVEL` (`:62`) and the fact that it
    precedes `FetchContent_MakeAvailable(absl)` (`:80`), `S2_USE_SYSTEM_INCLUDES`
@@ -1053,7 +1131,9 @@ The steps, in the order they have to happen:
 5. Replace both trees wholesale. Never hand-edit upstream source; a divergence
    that is not a fork decision belongs in `FORK-NOTES.md`, not in a diff.
 6. Re-derive `UPSTREAM.sha256` with the same method and record the new count in
-   its header.
+   its header. If the new release ships a different README, its bytes replace
+   `README.upstream.md` and its digest replaces the record under that name; the
+   fork's own `README.md` is not touched by a pin move.
 7. Add a `CHANGELOG.md` section naming the move, and update the
    `lts_YYYYMMDD` expectation in the CI provenance job if the Abseil LTS
    changed.
@@ -1061,6 +1141,10 @@ The steps, in the order they have to happen:
 ## See also
 
 * `README.zig.md` — how to build it, how to use it, every typed operation.
+* `README.md` — this fork's README: the current deviations, the current
+  matrix, and how to consume the package.
+* `README.upstream.md` — upstream's README, preserved byte-for-byte.
+* `FORK-LICENSE.md` — the licence of this fork's own files.
 * `NOTICE.md` — the licences, the obligations, and every file this fork owns.
 * `CHANGELOG.md` — the numbered fork-only divergences.
 * `FORK-NOTES.md` — the decisions, what they cost, and what is still pending.

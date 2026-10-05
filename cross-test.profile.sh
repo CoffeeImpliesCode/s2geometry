@@ -24,6 +24,26 @@
 # caller that wants ReleaseSafe passes it as a `--` build argument, which is
 # appended to this harness's command and is not managed here.
 
+# Delivery is the default: `-Dlinkage` is not set here either, so every cell
+# builds and runs the three static archives, which is the linkage policy this
+# SDK has and the only delivery every target in the 53-platform table supports.
+# The shared form is a delivery change and not a compile-only one --
+# `libs2bridge.so.0` resolves `libs2.so.0` and `libabsl.so.2508` through
+# `$ORIGIN` at load time -- so it is gated by the `native` matrix in
+# `.github/workflows/verify.yml` (the `*-shared` rows) rather than by a target
+# list here.
+#
+# A whole-table `-Dlinkage=dynamic` run is not available and is not this
+# harness's to arrange: `wasm32-wasi` is in the published tier table and has no
+# dynamic linker, so `build.zig` refuses a shared delivery for it instead of
+# substituting a static archive, and the table run would stop there.  Cells that
+# want the shared delivery pass `-Dlinkage=dynamic` as a `--` build argument,
+# which this harness appends and does not manage.
+#
+# `-Druntime` is likewise not managed here.  It selects how the facade reaches
+# the library rather than which library is delivered, it is orthogonal to
+# `-Dlinkage`, and the same `--` argument carries it.
+
 # The build step this package is gated by.
 CROSS_BUILD_STEP=test
 

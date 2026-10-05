@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Consumes the `s2geometry` package the way an outside project would.
 //!
 //! Everything here goes through the published surface only: `b.dependency` and
@@ -16,6 +18,17 @@
 //! This program is deliberately more than a version print: it combines a real
 //! cell-id computation, a real polygon area, and a real region covering, which
 //! is three different parts of the C++ library reached through one facade.
+//!
+//! ## The two configurations
+//!
+//! In the default linked build nothing below changes. In a runtime-loading
+//! build (`-Druntime=true`) the native bridge is not linked, so every call
+//! goes through a table one explicit `load` fills, and the provider is named on
+//! the command line (`--provider <path>`) or in `S2GEOMETRY_TEST_PROVIDER`.
+//! Nothing is loaded by default: a run with neither says so rather than
+//! falling back to the bundled linkage. `s2.runtime_loaded` is a comptime
+//! constant, so a program that supports both writes two branches and only one
+//! is analyzed.
 
 const std = @import("std");
 const s2 = @import("s2geometry");
@@ -28,6 +41,46 @@ const ConsumerError = error{
     CoveredByWrongCell,
 };
 
+/// A runtime-loading build has no provider until one is named.
+const ConfigurationError = error{NoProviderConfigured};
+
+/// The environment variable that names the provider when the command line does
+/// not.
+const provider_variable = "S2GEOMETRY_TEST_PROVIDER";
+
+/// The provider this run should load, from `--provider <path>` or from
+/// `S2GEOMETRY_TEST_PROVIDER`.
+///
+/// Both are explicit. Nothing here looks in a default location, and a build
+/// that was not told which file to load says so rather than loading something
+/// else. The file has to be a shared build of this package's own bridge --
+/// every `s2br_*` symbol is defined in `zig/bridge.cc`, so an installed upstream
+/// `libs2` exports none of them.
+fn providerRequest(init: std.process.Init) ConfigurationError![]const u8 {
+    const args = init.minimal.args.toSlice(init.arena.allocator()) catch
+        return noProvider();
+    var index: usize = 1;
+    while (index < args.len) : (index += 1) {
+        if (std.mem.eql(u8, args[index], "--provider")) {
+            if (index + 1 >= args.len) return noProvider();
+            return args[index + 1];
+        }
+    }
+    return init.environ_map.get(provider_variable) orelse
+        return noProvider();
+}
+
+fn noProvider() ConfigurationError {
+    std.debug.print(
+        "consumer: this is a runtime-loading build. Pass --provider <path>, or " ++
+            "export S2GEOMETRY_TEST_PROVIDER with a shared build of this " ++
+            "package's own bridge -- the image exporting the 93 s2br_* entry " ++
+            "points of zig/bridge.h, with libs2 and libabsl in its closure.\n",
+        .{},
+    );
+    return error.NoProviderConfigured;
+}
+
 pub fn main(init: std.process.Init) !void {
     var stdout_buffer: [4096]u8 = undefined;
     var stdout_file = std.Io.File.stdout().writer(init.io, &stdout_buffer);
@@ -35,6 +88,17 @@ pub fn main(init: std.process.Init) !void {
     defer out.flush() catch {};
 
     try out.writeAll("s2geometry consumer\n");
+
+    // A runtime-loading build has no library until the one explicit load below
+    // succeeds; a linked build is usable already, and this branch is never
+    // analyzed there. Either way the configuration is printed, so a run says
+    // which of the two it was.
+    if (comptime s2.runtime_loaded) {
+        try s2.load(.{ .path = try providerRequest(init) });
+        try out.print("loaded provider: {s}\n", .{s2.loadedSource().?.path});
+    } else {
+        try out.writeAll("linked\n");
+    }
 
     // 1. The token codec, against golang/geo's published table.
     try out.writeAll("\npublished token/id pairs (golang/geo TestCellIDTokensNominal):\n");

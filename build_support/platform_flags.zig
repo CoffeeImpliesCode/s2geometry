@@ -17,6 +17,11 @@
 //!   Zig's Clang 21: bitmap.h:718 and coder.cc:62 explicitly call sized
 //!   delete, but the default Windows frontend omits those declarations.
 //!   The compiler version alone does not establish target-specific defaults.
+//!   It is also applied to the Abseil closure here, which upstream does not
+//!   do, because upstream issues it *after*
+//!   `FetchContent_MakeAvailable(absl)` and so reaches S2's targets only.
+//!   `abslFlags` is `s2Flags` for that reason; see the comment on
+//!   `absl_flags`.
 //! * `-DABSL_MIN_LOG_LEVEL=1` — `CMakeLists.txt:62`, a directory-scope
 //!   `add_definitions` issued *before* `FetchContent_MakeAvailable(absl)`, so
 //!   under the `-DFETCH_ABSEIL=ON` path Abseil is compiled with it too.
@@ -102,13 +107,24 @@ const s2_flags = [_][]const u8{
     "-DABSL_MIN_LOG_LEVEL=1",
     "-DNOMINMAX",
 };
-const absl_flags = [_][]const u8{
-    "-std=c++17",
-    "-fno-fast-math",
-    "-ffp-contract=off",
-    "-DABSL_MIN_LOG_LEVEL=1",
-    "-DNOMINMAX",
-};
+// Abseil's flags are the S2 flags.  `-fsized-deallocation` is the reason the
+// two lists are one: `absl/**.h` and `s2/**.h` are one header closure compiled
+// into two separate shared objects, and the flag changes the code the compiler
+// emits for `delete` on a sized type.  Compiling one image with the flag and
+// the other without gives the same inline header function two different
+// bodies, and both are `WEAK`/`DEFAULT`, so the dynamic linker is free to bind
+// one image's caller to the other image's copy.  A recorded run shows exactly
+// that: `absl::Status::Status(Status&&)` 186 bytes in `libabsl.so` against 184
+// in `libs2.so`, `absl::flags_internal::Flag<bool>::Get` 487 against 494, and
+// `std::string::begin` 113 against 95.
+//
+// Upstream does not have to state this.  `CMakeLists.txt:80` calls
+// `FetchContent_MakeAvailable(absl)` and `CMakeLists.txt:127` adds
+// `-fsized-deallocation` afterwards, so upstream's directory-scoped
+// `add_compile_options` reaches S2's targets and not Abseil's.  Here both
+// closures are compiled by this one graph into artifacts that interpose on
+// each other, so they have to agree; the flag is what makes them agree.
+const absl_flags = s2_flags;
 const s2_windows_flags = s2_flags ++ [_][]const u8{"-D_USE_MATH_DEFINES"};
 const absl_windows_flags = absl_flags ++ [_][]const u8{"-D_USE_MATH_DEFINES"};
 const s2_wasi_flags = s2_flags ++ wasi_provider.cpp_flags;
@@ -140,7 +156,8 @@ pub fn s2Flags(target: std.Build.ResolvedTarget) []const []const u8 {
 /// and this fork does not build with `-Werror`.  The one define from those
 /// lists that does matter, `NOMINMAX`, is carried, as is the C++ standard and
 /// the floating-point contract, which `CMakeLists.txt:24-27` makes a joint
-/// requirement of s2 and Abseil.
+/// requirement of s2 and Abseil.  The deprecation-ABI flag is carried too, for
+/// the reason `absl_flags` gives.
 pub fn abslFlags(target: std.Build.ResolvedTarget) []const []const u8 {
     return switch (target.result.os.tag) {
         .windows => &absl_windows_flags,

@@ -37,7 +37,9 @@
 #           spinlock_win32.inc), so a header tree without them cannot compile.
 #     24  E  licence, notice and dependency/build records of both upstreams
 #           s2geometry LICENSE, NOTICE, AUTHORS, CONTRIBUTORS, CONTRIBUTING.md,
-#           README.md, CMakeLists.txt, Config.cmake.in, .clang-format, setup.py,
+#           README.upstream.md (upstream's README, byte-preserved under that
+#           name since 2026-10-04), CMakeLists.txt, Config.cmake.in,
+#           .clang-format, setup.py,
 #           pyproject.toml; Abseil LICENSE, AUTHORS, README.md,
 #           CONTRIBUTING.md, UPGRADES.md, FAQ.md, CMakeLists.txt, BUILD.bazel,
 #           MODULE.bazel, .clang-format, PrivacyInfo.xcprivacy, create_lts.py,
@@ -117,8 +119,16 @@
 #                     this fork's CI and ignore rules; the inherited upstream
 #                     .github/workflows/build.yml was removed (see FORK-NOTES.md)
 #                     and is not part of any upstream tree this package carries.
-#   UPSTREAM.md, NOTICE.md, CHANGELOG.md, FORK-NOTES.md, README.zig.md
-#                     this fork's own records, listed in NOTICE.md.
+#   UPSTREAM.md, NOTICE.md, CHANGELOG.md, FORK-NOTES.md, FORK-LICENSE.md,
+#   README.zig.md, README.md, package.nix, flake.nix, devenv.nix, devenv.yaml,
+#   .envrc
+#                     this fork's own records, its licence grant and its
+#                     packaging files, listed in NOTICE.md.  README.md has been
+#                     in this list rather than in group E since 2026-10-04: the
+#                     fork README replaced upstream's README at that path, and
+#                     upstream's bytes are preserved at README.upstream.md,
+#                     which group E records under that name with the same
+#                     digest and the same bytes.
 #   UPSTREAM.sha256   a record cannot contain its own digest.
 #   doc/, .clang-tidy, the remaining src/s2/*_test.cc,
 #   src/s2/testing/*, src/python/*.cc
@@ -139,6 +149,15 @@
 # The original 926 records were derived on 2026-10-01. The four modified
 # Abseil files were re-derived on 2026-10-02 after their bounded portability
 # patches and prominent change notices; the path set remained 926 records.
+#
+# One record was RENAMED on 2026-10-04: README.md is now README.upstream.md,
+# with the same digest and the same bytes.  The fork README replaced upstream's
+# README at that path, so the record moved to the path that still holds those
+# bytes.  No digest changed and no record was added or removed, so the path set
+# is still 927 records.  The fork's own new files — README.md, FORK-LICENSE.md,
+# package.nix, flake.nix, devenv.nix, devenv.yaml and .envrc — are excluded
+# above, on the same rule that excludes this fork's other mutable records and
+# build files.
 #
 # On 2026-10-02 the delta grew from four Abseil files to eight, one of them in
 # src/, and this record changed with it:
@@ -1051,7 +1070,7 @@ c9b585cd129f674151d80258871ab354e02037f47318476a5e0f6a4799064aeb  CONTRIBUTING.m
 b0bc289ffc549525b62acf4d13266a373e256c34c196d95ef71e59b363790a2f  Config.cmake.in
 cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  LICENSE
 5b5bb92c704c1efa680a62fedcbda2933355613d7d694190383773e49e5c1913  NOTICE
-d91df72a132d05348e17a32bd0443c7325c701c79c4aa9e766d74b564a609ce1  README.md
+d91df72a132d05348e17a32bd0443c7325c701c79c4aa9e766d74b564a609ce1  README.upstream.md
 5bf59c6870bbd003140150e0a1730c7a729e6cb1e21913ca59c932f612dbd17a  pyproject.toml
 60c607616483b60e25e99694689b28d426ac7a50d1ab39370b1df85afebb3ad5  setup.py
 cd25bfb8127eecadfc680968435b58abde752791866cdd80e4030bfac9e39cfa  vendor/abseil-cpp/.clang-format

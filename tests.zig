@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //! Behavioural tests for the S2 facade.
 //!
 //! Every expected value here is an independent known answer published either by
@@ -48,6 +50,24 @@
 //! Every public method of the facade is called from this file with concrete
 //! argument types, which is what makes `zig build check` a real compile of the
 //! facade for every target instead of a compile of an unreferenced archive.
+//!
+//! ## What a runtime-loading build needs
+//!
+//! Such a build has no library until `load` has been called, so every test
+//! calls `nativeReady()` first. That is a no-op at comptime in a linked build,
+//! which is the default and what every recorded gate in this repository has
+//! run.
+//!
+//! In a runtime-loading build the provider is named by the environment, in
+//! `S2GEOMETRY_TEST_PROVIDER`, and it has to be a shared build of *this
+//! package's own bridge*: an image exporting the 93 `s2br_*` entry points of
+//! `zig/bridge.h`, with `libs2` and `libabsl` in its own closure. An installed
+//! upstream `libs2` is not one, because upstream has no `s2br_*` header at all.
+//! `runtime/library.zig` states the whole boundary.
+//!
+//! Nothing here falls back to the bundled linkage and nothing is loaded by
+//! default: a runtime-loading build with the variable unset stops with the
+//! variable's name rather than quietly testing a linked library.
 
 const std = @import("std");
 const s2 = @import("s2geometry");
@@ -159,10 +179,68 @@ fn expectSameCellMultiset(got: []const s2.CellId, want: []const s2.CellId) !void
 }
 
 // ---------------------------------------------------------------------------
+// The native library, in whichever configuration this build produced
+// ---------------------------------------------------------------------------
+
+/// A shared object exporting all **93** entry points `zig/bridge.h` declares,
+/// named by the environment in a runtime-loading build.
+///
+/// That is this package's own `libs2bridge.so.0` -- or `.dylib`, or
+/// `s2bridge.dll`. An installed upstream `libs2` is not one: every `s2br_*`
+/// symbol is defined in `zig/bridge.cc` in this repository, so upstream exports
+/// none of them (`runtime/library.zig` states the whole boundary).
+const provider_variable = "S2GEOMETRY_TEST_PROVIDER";
+
+/// Make the native library usable, once, before a test calls the facade.
+///
+/// In a linked build the facade is usable already and this is a no-op at
+/// comptime, so the branch is never analyzed. In a runtime-loading build every
+/// call into the module goes through a table that `load` fills, so this is
+/// where the one explicit load happens. It is safe to call from every test:
+/// the contract makes the same request idempotent, and the loader keeps the
+/// handle to the end of the process.
+///
+/// A build that was not told which file to load stops here with the variable's
+/// name, rather than reporting a test failure that says nothing about the
+/// reason.
+fn nativeReady() void {
+    if (comptime !s2.runtime_loaded) return;
+    if (s2.loadedSource() != null) return;
+
+    var buffer: [4096]u8 = undefined;
+    const value = std.testing.environ.getAlloc(testing.allocator, provider_variable) catch
+        missingProvider();
+    defer testing.allocator.free(value);
+    if (value.len == 0 or value.len > buffer.len) missingProvider();
+    @memcpy(buffer[0..value.len], value);
+    s2.load(.{ .path = buffer[0..value.len] }) catch |err| {
+        std.debug.print(
+            "tests.zig: loading " ++ provider_variable ++ " = \"{s}\" failed: {t}\n",
+            .{ buffer[0..value.len], err },
+        );
+        @panic("tests.zig: the provider named by " ++ provider_variable ++
+            " did not load; nothing below this line ran");
+    };
+}
+
+fn missingProvider() noreturn {
+    @panic(
+        "tests.zig: this is a runtime-loading build and " ++ provider_variable ++
+            " is not set. Point it at a shared build of this package's own bridge" ++
+            " -- the image exporting the 93 s2br_* entry points of zig/bridge.h," ++
+            " with libs2 and libabsl in its closure -- for example the one " ++
+            "`zig build -Dlinkage=dynamic` installs, and export it for the whole " ++
+            "`zig build` invocation: the build cannot inject a path into a " ++
+            "run step's environment.",
+    );
+}
+
+// ---------------------------------------------------------------------------
 // CellId: the token codec
 // ---------------------------------------------------------------------------
 
 test "published token/id pairs decode and encode exactly" {
+    nativeReady();
     var lines = Lines{ .text = tokens_tsv };
     var accepted: usize = 0;
     var rejected: usize = 0;
@@ -201,6 +279,7 @@ test "published token/id pairs decode and encode exactly" {
 }
 
 test "every face root has the token upstream's id layout implies" {
+    nativeReady();
     // The layout is `id = [face][face_pos]`: three face bits, a one-bit level
     // marker, and the Hilbert position (`src/s2/s2cell_id.h:59-67`), and the
     // codec prints the id in hex with trailing zeros removed
@@ -225,6 +304,7 @@ test "every face root has the token upstream's id layout implies" {
 }
 
 test "a rejected token leaves the caller's output untouched" {
+    nativeReady();
     // The facade hides the output variable, so this asks the bridge the way the
     // facade does and inspects the memory behind it. The return value is not
     // compared here: what matters is that nothing was written, which is a
@@ -242,6 +322,7 @@ test "a rejected token leaves the caller's output untouched" {
 }
 
 test "a token buffer one byte short is refused and left alone" {
+    nativeReady();
     const id = try s2.CellId.fromToken("89c25");
     var full: [text_buf_len]u8 = undefined;
     const token = try id.toToken(&full);
@@ -259,6 +340,7 @@ test "a token buffer one byte short is refused and left alone" {
 }
 
 test "invalid cell ids are refused instead of answered with a number" {
+    nativeReady();
     try testing.expect(!s2.CellId.none.isValid());
     try testing.expect(!s2.CellId.sentinel.isValid());
     try testing.expect(!(s2.CellId{ .raw = 2 }).isValid());
@@ -294,6 +376,7 @@ test "invalid cell ids are refused instead of answered with a number" {
 // ---------------------------------------------------------------------------
 
 test "published containment and intersection table" {
+    nativeReady();
     var lines = Lines{ .text = neighbors_tsv };
     var rows: usize = 0;
     while (lines.next()) |line| {
@@ -312,6 +395,7 @@ test "published containment and intersection table" {
 }
 
 test "contains agrees with the inclusive id range it is defined by" {
+    nativeReady();
     // `contains` is `b >= a.range_min() and b <= a.range_max()`
     // (`src/s2/s2cell_id.h:290-295`), so the two must agree everywhere, and
     // children must partition their parent.
@@ -352,6 +436,7 @@ test "contains agrees with the inclusive id range it is defined by" {
 // ---------------------------------------------------------------------------
 
 test "published leaf cell ids round trip with published coordinates" {
+    nativeReady();
     var lines = Lines{ .text = latlng_tsv };
     var rows: usize = 0;
     while (lines.next()) |line| {
@@ -390,6 +475,7 @@ test "published leaf cell ids round trip with published coordinates" {
 }
 
 test "the projection origin is on face 0 and its face cell is centred there" {
+    nativeReady();
     // src/python/s2geometry_test.py:486-487 builds the level-0 cell
     // 0x1000000000000000 under the comment "Level-0 cell (i.e. face) centered at
     // (0, 0)", and src/s2/s2cell_id_test.cc:90-95 requires the leaf cell of
@@ -412,6 +498,7 @@ test "the projection origin is on face 0 and its face cell is centred there" {
 }
 
 test "the three positive axes land on the three faces the cube names for them" {
+    nativeReady();
     // A point's face is the one whose axis its largest component follows
     // (`src/s2/s2coords.cc:29-41`), and src/python/s2geometry_test.py:486-487
     // calls face 0 the face centred at (0, 0) -- the +X face. The same scheme
@@ -443,6 +530,7 @@ test "the three positive axes land on the three faces the cube names for them" {
 // ---------------------------------------------------------------------------
 
 test "published parent and child positions" {
+    nativeReady();
     var lines = Lines{ .text = neighbors_tsv };
     var rows: usize = 0;
     while (lines.next()) |line| {
@@ -479,6 +567,7 @@ test "published parent and child positions" {
 }
 
 test "a parent has exactly four children and they partition it" {
+    nativeReady();
     const parent = try s2.CellId.fromDebugString("3/0000");
     const level = (try parent.level()) + 1;
 
@@ -521,6 +610,7 @@ test "a parent has exactly four children and they partition it" {
 }
 
 test "a face cell reports its leaf-cell count without building any of them" {
+    nativeReady();
     // A face cell is at level 0, so every leaf cell on its face is one of its
     // descendants at level 30, and there are 4^30 = 2^60 of them.  No buffer
     // holds 2^60 ids and no walk reaches the end of them, so a count is the
@@ -588,6 +678,7 @@ test "a face cell reports its leaf-cell count without building any of them" {
 }
 
 test "next and prev walk the id space and stop at the ends" {
+    nativeReady();
     const cell = try s2.CellId.fromDebugString("2/033020001100");
     const level = try cell.level();
 
@@ -614,6 +705,7 @@ test "next and prev walk the id space and stop at the ends" {
 // ---------------------------------------------------------------------------
 
 test "published edge, all-neighbour and vertex-neighbour answers" {
+    nativeReady();
     var lines = Lines{ .text = neighbors_tsv };
     var edge_rows: usize = 0;
     var all_rows: usize = 0;
@@ -691,6 +783,7 @@ test "published edge, all-neighbour and vertex-neighbour answers" {
 }
 
 test "neighbour level bounds are refused rather than clamped" {
+    nativeReady();
     // `AppendAllNeighbors` requires `nbr_level >= level()`
     // (`src/s2/s2cell_id.cc:558`) and `GetSizeIJ` checks
     // `0 <= level <= kMaxLevel` (`src/s2/s2cell_id.h:611-614`), so the legal
@@ -731,6 +824,7 @@ test "neighbour level bounds are refused rather than clamped" {
 }
 
 test "a leaf cell accepts level 30 as its neighbour level" {
+    nativeReady();
     // kMaxLevel is a legal neighbour level, and it is the top of the range
     // rather than one past it: `GetSizeIJ(kMaxLevel)` is 1
     // (`src/s2/s2cell_id.h:611-614`), which is exactly what the
@@ -871,6 +965,7 @@ test "a leaf cell accepts level 30 as its neighbour level" {
 // ---------------------------------------------------------------------------
 
 test "the six faces partition the sphere exactly" {
+    nativeReady();
     // The cube's faces tile the unit sphere without overlap, so their exact
     // areas sum to the sphere's area, 4*pi. `S2Cell::ExactArea` is the method
     // upstream documents as accurate to six digits even for a leaf cell
@@ -884,6 +979,7 @@ test "the six faces partition the sphere exactly" {
 }
 
 test "children tile their parent and the approximation stays within its bound" {
+    nativeReady();
     const cell = try s2.CellId.fromFacePosLevel(2, 0x2468, 6);
     const exact = try s2.Cell.init(cell).exactArea();
     try testing.expect(exact > 0);
@@ -922,6 +1018,7 @@ test "children tile their parent and the approximation stays within its bound" {
 }
 
 test "a face cell spans the whole (u,v) square and has four distinct corners" {
+    nativeReady();
     // golang/geo publishes `ijLevelToBoundUV(0, 0, 0)` as the whole square
     // [-1, 1] x [-1, 1] in its TestIJLevelToBoundUV table (s2/cellid_test.go).
     const face = try s2.CellId.fromFace(0);
@@ -968,6 +1065,7 @@ test "a face cell spans the whole (u,v) square and has four distinct corners" {
 // ---------------------------------------------------------------------------
 
 test "published normalization answers for the poles and the antimeridian" {
+    nativeReady();
     var lines = Lines{ .text = normalize_tsv };
     var norm_rows: usize = 0;
     var valid_rows: usize = 0;
@@ -1021,6 +1119,7 @@ test "published normalization answers for the poles and the antimeridian" {
 }
 
 test "published polar closure answers" {
+    nativeReady();
     var lines = Lines{ .text = polar_tsv };
     var rows: usize = 0;
     while (lines.next()) |line| {
@@ -1061,6 +1160,7 @@ test "published polar closure answers" {
 }
 
 test "an antimeridian rectangle reports itself inverted and still holds its points" {
+    nativeReady();
     // src/s2/s2latlng_rect_test.cc:181-198 builds r1 from (0, -180) to
     // (90, 0) and requires (30, -45) inside and (30, 45) outside.
     //
@@ -1112,6 +1212,7 @@ test "an antimeridian rectangle reports itself inverted and still holds its poin
 }
 
 test "a cap's area is its height and its complement covers the rest of the sphere" {
+    nativeReady();
     // `S2Cap::GetArea` is `2*pi*height` (`src/s2/s2cap.cc:48-50`), so these two
     // accessors are related by construction rather than independently.
     const cap = s2.Cap{ .center = .{ .lat_deg = 10, .lng_deg = 20 }, .radius_deg = 30 };
@@ -1174,6 +1275,7 @@ test "a cap's area is its height and its complement covers the rest of the spher
 }
 
 test "two coordinates have the great-circle distance upstream publishes" {
+    nativeReady();
     // golang/geo's TestLatLngDistance table (s2/latlng_test.go, itself based on
     // the C++ S2LatLng distance test) gives these in degrees with stated
     // tolerances.
@@ -1194,6 +1296,7 @@ test "two coordinates have the great-circle distance upstream publishes" {
 }
 
 test "point normalization preserves direction and yields unit length" {
+    nativeReady();
     const scaled = try (s2.Point{ .x = 3, .y = 4, .z = 12 }).normalized();
     const length = @sqrt(
         scaled.x * scaled.x + scaled.y * scaled.y + scaled.z * scaled.z,
@@ -1211,6 +1314,7 @@ test "point normalization preserves direction and yields unit length" {
 // ---------------------------------------------------------------------------
 
 test "an octant triangle has exactly pi/2 steradians" {
+    nativeReady();
     // The spherical triangle through the three positive coordinate axes is one
     // octant: its three angles are each pi/2, so by the spherical-excess formula
     // its area is 3*(pi/2) - pi = pi/2, and eight of them tile the sphere's
@@ -1267,6 +1371,7 @@ test "an octant triangle has exactly pi/2 steradians" {
 }
 
 test "the empty and full loops are exact opposites" {
+    nativeReady();
     var empty = try s2.Loop.empty();
     defer empty.deinit();
     var full = try s2.Loop.full();
@@ -1293,6 +1398,7 @@ test "the empty and full loops are exact opposites" {
 }
 
 test "a loop with a repeated vertex is constructible but invalid" {
+    nativeReady();
     // Upstream fixes the vertex set first and answers validity questions
     // afterwards (`src/s2/s2loop.cc:201-221`), so a bad loop is a loop that
     // reports itself invalid rather than a construction that fails.
@@ -1314,6 +1420,7 @@ test "a loop with a repeated vertex is constructible but invalid" {
 }
 
 test "a vertex that is not a direction is refused rather than built" {
+    nativeReady();
     // The octant through the positive axes again, with one component doubled.
     // The triple still looks like a point and is still finite, but its squared
     // norm is 4 rather than 1, and that is the one thing about it upstream
@@ -1325,7 +1432,7 @@ test "a vertex that is not a direction is refused rather than built" {
     // ReleaseSafe among them.  Upstream's own validator says the same about the
     // ordering: the unit-length check "happens too late in debug mode, because
     // S2Loop construction calls s2pred::Sign which expects vertices to be unit
-    // length" (`src/s2/s2loop.cc:225-230`).
+    // length" (`src/s2/s2loop.cc:228-231`).
     //
     // So a vertex that is not a direction is not a loop to be reported invalid
     // afterwards, it is an argument no one upstream can answer for, and each
@@ -1369,6 +1476,7 @@ test "a vertex that is not a direction is refused rather than built" {
 }
 
 test "a vertex count no native counter can hold is refused unvisited" {
+    nativeReady();
     // Upstream counts vertices and loops in `int`. `S2Loop::Init` assigns
     // `vertices.size()` into `S2Loop::num_vertices_` (`src/s2/s2loop.cc:203`,
     // `src/s2/s2loop.h:647`), `S2Polygon::InitLoopProperties` adds those
@@ -1480,6 +1588,7 @@ test "a vertex count no native counter can hold is refused unvisited" {
 }
 
 test "a vertex or loop index no native index can hold is refused" {
+    nativeReady();
     // `S2Loop::vertex(int i)` (`src/s2/s2loop.h:193`) and `S2Polygon::loop(int
     // k)` (`src/s2/s2polygon.h:259`) take an `int`, while a caller of this
     // facade holds a `usize` and can write down any value one. Narrowing a
@@ -1540,6 +1649,7 @@ test "a vertex or loop index no native index can hold is refused" {
 // ---------------------------------------------------------------------------
 
 test "a quadrilateral has twice the area of the triangle that halves it" {
+    nativeReady();
     // The cube face on +x is the square through (1,-1,-1), (1,1,-1),
     // (1,1,1) and (1,-1,1), each divided by sqrt(3).  Those four corners
     // run counter-clockwise seen from outside the face, which is the winding
@@ -1652,6 +1762,7 @@ test "a quadrilateral has twice the area of the triangle that halves it" {
 }
 
 test "the empty and full polygons complement each other" {
+    nativeReady();
     var empty = try s2.Polygon.empty();
     defer empty.deinit();
     var full = try s2.Polygon.full();
@@ -1683,6 +1794,7 @@ test "the empty and full polygons complement each other" {
 }
 
 test "union and intersection of two overlapping wedges give pi/4 and 3pi/4" {
+    nativeReady();
     // Two spherical wedges of solid angle pi/2 each that genuinely overlap.
     // The first is the octant through the positive axes, which covers azimuth
     // 0 to 90 north of the equator; the second is that octant turned 45
@@ -1791,6 +1903,7 @@ test "union and intersection of two overlapping wedges give pi/4 and 3pi/4" {
 }
 
 test "a boolean operation refuses an operand its own validator rejects" {
+    nativeReady();
     // The square on cube face 0 with its four corners in an order that makes a
     // bow tie: (1,-1,-1), (1,1,1), (1,1,-1), (1,-1,1), each over sqrt(3).  The
     // first edge is one diagonal of the square and the third is the other, so
@@ -1846,6 +1959,7 @@ test "a boolean operation refuses an operand its own validator rejects" {
 }
 
 test "a polygon with a hole subtracts the hole" {
+    nativeReady();
     // A cap-like quadrilateral around the north pole, and a smaller one inside
     // it. Every vertex is a real latitude/longitude point converted to a
     // direction, and the two loops are both counter-clockwise seen from the
@@ -1907,6 +2021,7 @@ test "a polygon with a hole subtracts the hole" {
 }
 
 test "a length list that cannot be summed is refused, not overflowed" {
+    nativeReady();
     // `Polygon.initLoops` totals the caller's lengths so it can check the sum
     // against the vertex array it was handed. The lengths are `usize`, and a
     // caller can perfectly well name one near the end of that range without
@@ -1943,6 +2058,7 @@ test "a length list that cannot be summed is refused, not overflowed" {
 // ---------------------------------------------------------------------------
 
 test "the coverer picks a published cell for a real Sydney coordinate" {
+    nativeReady();
     // See testdata/upstream_coverer_sydney.txt. The coordinates, the options and
     // the 42 tokens are the ones src/s2/s2region_coverer_test.cc's
     // JavaCcConsistency test publishes for a polyline through the two points.
@@ -2001,6 +2117,7 @@ test "the coverer picks a published cell for a real Sydney coordinate" {
 }
 
 test "the covering of a cell is exactly that cell" {
+    nativeReady();
     // Upstream's own fixture, with max_cells set to 1
     // (src/s2/s2region_coverer_test.cc:72-87).
     const cell = try s2.CellId.fromDebugString("2/033020001100");
@@ -2014,6 +2131,7 @@ test "the covering of a cell is exactly that cell" {
 }
 
 test "a covering obeys its options and actually covers its region" {
+    nativeReady();
     // Upstream states the contract for a covering: every level is within
     // min_level..max_level and congruent to min_level modulo level_mod, and the
     // union of the cells contains the region
@@ -2085,6 +2203,7 @@ test "a covering obeys its options and actually covers its region" {
 }
 
 test "coverings of a rectangle and of a polygon cover a point inside them" {
+    nativeReady();
     var poly = try s2.Polygon.init(&[_][3]f64{
         .{ 1, 0, 0 },
         .{ 0, 1, 0 },
@@ -2132,6 +2251,7 @@ test "coverings of a rectangle and of a polygon cover a point inside them" {
 // ---------------------------------------------------------------------------
 
 test "every unit in the facade is the one its name says" {
+    nativeReady();
     // A quarter turn is pi/2 radians, which is 90 degrees. Reading one as the
     // other would be off by a factor of 57.3. The radian constructor is the
     // one that has to do a conversion here; the degree constructor only names
@@ -2159,6 +2279,7 @@ test "every unit in the facade is the one its name says" {
 }
 
 test "a cell can be rebuilt from its own face, position and level" {
+    nativeReady();
     // `S2CellId::FromFacePosLevel` is upstream's inverse of `face()`, `pos()`
     // and `level()` taken together (`src/s2/s2cell_id.h:543-550`), so applying
     // it to a cell's own three accessors returns the cell. That is an identity
@@ -2197,6 +2318,7 @@ test "a cell can be rebuilt from its own face, position and level" {
 }
 
 test "a cell named by its face, i and j matches the published corner neighbours" {
+    nativeReady();
     // `S2CellId::FromFaceIJ` returns the leaf cell whose centre sits at (i, j)
     // on `face`, both in 0 .. 2^30 - 1 (`s2/s2cell_id.h:482-484`, with
     // `kMaxSize = 1 << kMaxLevel`, `s2/s2cell_id.h:102`). Upstream's own
@@ -2248,6 +2370,7 @@ test "a cell named by its face, i and j matches the published corner neighbours"
 }
 
 test "failed C covering sizing cannot retain a previous valid count" {
+    nativeReady();
     const options = s2.c.S2BridgeCovererOptions{
         .min_level = 0,
         .max_level = 0,

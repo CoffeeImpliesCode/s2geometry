@@ -270,6 +270,31 @@ jobs:
             flags: "check"
           - job: consumer
             flags: "consumer"
+
+          # The shared delivery, against the entry points that build one target.
+          # The option selects a delivery and nothing else, so every step that
+          # installs, links or runs against the three libraries has to work with
+          # the shared form of all three: a mode that only compiled would not be
+          # evidence that the shared closure resolves.
+          #
+          # There is deliberately no `check -Dlinkage=dynamic` row.  `check`
+          # walks the six-target matrix, and `wasm32-wasi` has no dynamic linker
+          # to carry a shared object, so the build refuses that cell instead of
+          # substituting a static archive -- which means a full-matrix shared
+          # check cannot pass by construction.  The shared cross compile is
+          # done for a named dynamic-capable target in the `shared-delivery`
+          # job instead, and the default `check` rows above still compile all
+          # six targets statically.
+          - job: build-shared
+            flags: "-Dlinkage=dynamic"
+          - job: test-debug-shared
+            flags: "test -Dlinkage=dynamic"
+          - job: test-release-safe-shared
+            flags: "test -Doptimize=ReleaseSafe -Dlinkage=dynamic"
+          - job: smoke-shared
+            flags: "smoke -Dlinkage=dynamic"
+          - job: consumer-shared
+            flags: "consumer -Dlinkage=dynamic"
     steps:
       - uses: actions/checkout@v4
       - uses: mlugg/setup-zig@v2
@@ -297,6 +322,31 @@ jobs:
       # header, and the whole of the upstream `s2` and `absl` header trees.
       - name: Build and install
         run: zig build -j8 --summary all
+
+      # The compiled C++ runtime belongs to the ELF shared route and to no
+      # other.  This job installs the default delivery, which is static, so it
+      # is also where the converse is gated: a static tree that installed a
+      # `libs2cpp`, or the licence texts that cover one, would be shipping an
+      # artifact nothing links and records for a route that does not exist.
+      - name: the static delivery installs no compiler C++ runtime
+        run: |
+          set -euo pipefail
+          for candidate in zig-out/lib/libs2cpp.*; do
+            if [ -e "$candidate" ]; then
+              echo "the static delivery installed $candidate" >&2
+              ls -l zig-out/lib >&2 || true
+              exit 1
+            fi
+          done
+          for runtime in libcxx libcxxabi libunwind; do
+            record="zig-out/share/licenses/s2geometry/LICENSE.$runtime.txt"
+            if [ -e "$record" ]; then
+              echo "the static delivery installed $record, which covers only the ELF shared route's libs2cpp" >&2
+              ls -l zig-out/share/licenses/s2geometry >&2 || true
+              exit 1
+            fi
+          done
+          echo "  static delivery: no libs2cpp, and none of its three licence texts"
 
       # A C consumer of the installed bridge, reached the way a C program
       # reaches it: the one installed public header, the three installed
@@ -755,6 +805,322 @@ jobs:
             -pthread \
             -o "$RUNNER_TEMP/cxx_native_consumer"
           "$RUNNER_TEMP/cxx_native_consumer"
+
+  # The shared delivery, proved against what the graph installs rather than
+  # against its cache.  Every assertion below is read out of a source file and
+  # the reference is in the comment beside it, so the expectations cannot drift
+  # from the tree they describe without the comment changing too.
+  #
+  #   * The sonames are upstream's.  `libs2.so.0` from
+  #     `CMakeLists.txt:294-296` -- `SOVERSION ${PROJECT_VERSION_MAJOR}`, which
+  #     is 0 whether the stale `project()` line at `:7-8` reads 0.12.0 or the tag
+  #     reads 0.14.0.  `libabsl.so.2508` from Abseil's own `ABSL_SOVERSION
+  #     "2508.0.0"` (`vendor/abseil-cpp/CMakeLists.txt:27`), which is the LTS
+  #     2025-08 release's encoding of its version.  `libs2bridge.so.0` is
+  #     fork-authored and takes `s2`'s.
+  #   * The file names follow `Compile`'s own spelling
+  #     (`lib/std/Build/Step/Compile.zig:488-515`): `lib<name>.so.<major>.<minor>.
+  #     <patch>` with `lib<name>.so.<major>` and `lib<name>.so` beside it.
+  #   * The closure is `libs2bridge.so.0 -> libs2.so.0 -> libabsl.so.2508`,
+  #     because `addS2` links `absl` and `addBridge` links `s2`.
+  #   * `$ORIGIN` is in every RUNPATH, which is Abseil's published
+  #     `INSTALL_RPATH` for shared builds
+  #     (`vendor/abseil-cpp/CMake/AbseilHelpers.cmake:259-267`).
+  #   * The exported set is the default one.  Nothing in `src/s2` carries an
+  #     export macro at all, and Abseil's one, `ABSL_DLL`
+  #     (`vendor/abseil-cpp/absl/base/config.h:614-626`), expands to nothing
+  #     without `_MSC_VER` *and* `ABSL_BUILD_DLL` -- so there is no
+  #     `-fvisibility=hidden` here to narrow and no version script to apply.
+  #   * The bridge's 88 `s2br_*` entry points -- `grep -c '^S2BridgeStatus
+  #     s2br_' zig/bridge.h`, matched one-for-one by the definitions in
+  #     `zig/bridge.cc` -- are exported from `libs2bridge.so.0` and are NOT
+  #     exported from `libs2.so.0`, because every one of them is defined in
+  #     this repository and an upstream `libs2` has none.  That is the boundary
+  #     a runtime-loaded provider has to respect: the shared bridge is the C
+  #     route, and a shared `libs2` is not a substitute for it.
+  shared-delivery:
+    name: shared delivery, installed closure and relocatability
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: Build and install the shared delivery
+        run: zig build -Dlinkage=dynamic -j8 --summary all --prefix "$RUNNER_TEMP/s2-shared"
+
+      # `check` walks the six-target matrix, and one of those targets is
+      # `wasm32-wasi`, whose operating system has no dynamic linker
+      # (`std.Target.DynamicLinker.kind` is `.none`; `lib/std/Target.zig:
+      # 2345-2402`).  A shared object there is a file nothing could load, so
+      # `build.zig` refuses `-Dlinkage=dynamic` for that target rather than
+      # handing back a static archive under the option's name.  This step is
+      # therefore a named dynamic-capable target, which is what a
+      # `-Dtarget=…` names: exactly one target, not a narrowed matrix.
+      - name: the facade, tests and example compile for a cross target
+        run: zig build check -Dtarget=aarch64-linux-gnu -Dlinkage=dynamic -j8 --summary all
+
+      # The refusal is the designed behaviour, so it is gated as one: a shared
+      # delivery for a target that cannot carry one must not succeed.  Nothing
+      # here reads the message; the exit status is the whole assertion.
+      - name: a shared delivery for a target without a dynamic linker is refused
+        run: |
+          set -euo pipefail
+          if zig build -Dtarget=wasm32-wasi -Dlinkage=dynamic -j8 --summary all; then
+            echo "verify.yml: -Dlinkage=dynamic for wasm32-wasi succeeded, which it must not" >&2
+            exit 1
+          fi
+          echo "  wasm32-wasi + -Dlinkage=dynamic refused, as required"
+
+      # The default on that same target is the static delivery, and it is a
+      # fully supported one: the matrix row above is not a special case.
+      - name: the default delivery for wasm32-wasi is a static archive
+        run: zig build check -Dtarget=wasm32-wasi -j8 --summary all
+
+      # What the graph installed, and nothing else: no cache path, no
+      # intermediate, no artefact this job produced itself.
+      - name: the three shared objects, their sonames and their RUNPATH
+        run: |
+          set -euo pipefail
+          prefix="$RUNNER_TEMP/s2-shared"
+
+          # name, versioned file name, soname major.  `b.installArtifact`
+          # installs the versioned file and both symlinks
+          # (`Step/InstallArtifact.zig:139-144`, `wantSharedLibSymLinks` at
+          # `lib/std/Build.zig:2717-2719`).
+          check_lib () {
+            name=$1; real=$2; major=$3
+            if [ ! -f "$prefix/lib/$real" ]; then
+              echo "missing $prefix/lib/$real" >&2
+              ls -l "$prefix/lib" >&2 || true
+              exit 1
+            fi
+            if [ "$(readlink "$prefix/lib/lib$name.so.$major")" != "$real" ]; then
+              echo "lib$name.so.$major does not name $real" >&2
+              exit 1
+            fi
+            if [ "$(readlink "$prefix/lib/lib$name.so")" != "lib$name.so.$major" ]; then
+              echo "lib$name.so does not name lib$name.so.$major" >&2
+              exit 1
+            fi
+            soname=$(readelf -d "$prefix/lib/lib$name.so.$major" \
+              | sed -n 's/.*SONAME.*\[\(.*\)\].*/\1/p')
+            if [ "$soname" != "lib$name.so.$major" ]; then
+              echo "lib$name.so.$major records SONAME '$soname'" >&2
+              readelf -d "$prefix/lib/lib$name.so.$major" >&2
+              exit 1
+            fi
+            if ! readelf -d "$prefix/lib/lib$name.so.$major" \
+              | grep -qE '\((RUNPATH|RPATH)\).*\$ORIGIN'; then
+              echo "lib$name.so.$major has no \$ORIGIN run path" >&2
+              readelf -d "$prefix/lib/lib$name.so.$major" >&2
+              exit 1
+            fi
+            echo "  lib$name.so.$major -> $real, SONAME $soname, RUNPATH \$ORIGIN"
+          }
+          check_lib absl libabsl.so.2508.0.0 2508
+          check_lib s2 libs2.so.0.14.0 0
+          check_lib s2bridge libs2bridge.so.0.14.0 0
+
+          # The transitive closure.  A `libs2bridge.so.0` with no dependency on
+          # `libs2.so.0` would mean S2 had been linked into it statically and
+          # the soname would be naming a different image; a `libs2.so.0` with
+          # no dependency on `libabsl.so.2508` would mean the same one level
+          # down.
+          needed () { readelf -d "$1" | sed -n 's/.*NEEDED.*\[\(.*\)\].*/\1/p'; }
+          if ! needed "$prefix/lib/libs2bridge.so.0" | grep -qx 'libs2.so.0'; then
+            echo "libs2bridge.so.0 does not record libs2.so.0 as needed" >&2
+            needed "$prefix/lib/libs2bridge.so.0" >&2 || true
+            exit 1
+          fi
+          if ! needed "$prefix/lib/libs2.so.0" | grep -qx 'libabsl.so.2508'; then
+            echo "libs2.so.0 does not record libabsl.so.2508 as needed" >&2
+            needed "$prefix/lib/libs2.so.0" >&2 || true
+            exit 1
+          fi
+          echo "  closure: libs2bridge.so.0 -> libs2.so.0 -> libabsl.so.2508"
+
+      - name: the export surface is the one upstream's own shared build has
+        run: |
+          set -euo pipefail
+          prefix="$RUNNER_TEMP/s2-shared"
+          dynsyms () {
+            readelf -W --dyn-syms "$1" | awk 'NF >= 8 { print $8 }' | sed 's/@.*//' | sort -u
+          }
+
+          bridge_count=$(dynsyms "$prefix/lib/libs2bridge.so.0" | grep -c '^s2br_' || true)
+          if [ "$bridge_count" -ne 88 ]; then
+            echo "libs2bridge.so.0 exports $bridge_count s2br_* symbols, expected 88" >&2
+            dynsyms "$prefix/lib/libs2bridge.so.0" | grep '^s2br_' >&2 || true
+            exit 1
+          fi
+          for symbol in s2br_cell_from_token s2br_cell_to_token s2br_cell_level s2br_loop_create s2br_loop_area; do
+            if ! dynsyms "$prefix/lib/libs2bridge.so.0" | grep -qx "$symbol"; then
+              echo "libs2bridge.so.0 does not export $symbol" >&2
+              exit 1
+            fi
+          done
+          echo "  libs2bridge.so.0 exports 88 s2br_* entry points, the header's 88"
+
+          # The boundary, stated as a fact about the images rather than as a
+          # claim: every `s2br_*` symbol is defined in `zig/bridge.cc` in this
+          # repository, so a shared `libs2` that exported one would be a
+          # different library from upstream's.
+          if dynsyms "$prefix/lib/libs2.so.0" | grep -q '^s2br_'; then
+            echo "libs2.so.0 exports s2br_* symbols; an upstream libs2 has none" >&2
+            dynsyms "$prefix/lib/libs2.so.0" | grep '^s2br_' >&2 || true
+            exit 1
+          fi
+          # The C++ surface, by namespace rather than by one hand-written
+          # mangled name.  `src/s2/*.h` declares the library's types in
+          # `namespace s2` (`src/s2/s2cell_id.h`, `s2/s2loop.h`) and Abseil's
+          # in `namespace absl`, and the Itanium ABI prefixes a nested name
+          # with `_ZN2s2` and `_ZN4absl`.  A single exact symbol would be a
+          # stronger claim than this file can support without hard-coding a
+          # signature upstream is free to change; a namespace is the fact the
+          # source states.
+          if ! dynsyms "$prefix/lib/libs2.so.0" | grep -q '^_ZN2s2'; then
+            echo "libs2.so.0 exports nothing in namespace s2" >&2
+            exit 1
+          fi
+          if ! dynsyms "$prefix/lib/libabsl.so.2508" | grep -q '^_ZN4absl'; then
+            echo "libabsl.so.2508 exports nothing in namespace absl" >&2
+            exit 1
+          fi
+          if dynsyms "$prefix/lib/libabsl.so.2508" | grep -q '^_ZN2s2'; then
+            echo "libabsl.so.2508 exports s2 symbols; Abseil has no such namespace" >&2
+            exit 1
+          fi
+          echo "  libs2.so.0 exports namespace s2 and no C entry point; libabsl.so.2508 exports namespace absl and nothing from s2"
+
+      # The installed metadata, from a prefix that has been MOVED since the
+      # build wrote it.  `${pcfiledir}` and `$ORIGIN` are the two things under
+      # test: a `.pc` with a substituted absolute prefix, or a shared object
+      # that only found its dependencies by build-tree cache path, fails here.
+      - name: a relocated install is a package a C consumer can use
+        run: |
+          set -euo pipefail
+          moved="$RUNNER_TEMP/s2-shared-moved"
+          mv "$RUNNER_TEMP/s2-shared" "$moved"
+          export PKG_CONFIG_PATH="$moved/lib/pkgconfig"
+          export LD_LIBRARY_PATH="$moved/lib"
+
+          if [ ! -f "$moved/lib/pkgconfig/s2geometry.pc" ]; then
+            echo "the build graph installed no lib/pkgconfig/s2geometry.pc" >&2
+            exit 1
+          fi
+          for record in LICENSE NOTICE AUTHORS CONTRIBUTORS \
+                       LICENSE.abseil AUTHORS.abseil LICENSE.zig-0.16.0.txt \
+                       NOTICE.md FORK-LICENSE.md UPSTREAM.md UPSTREAM.sha256
+          do
+            if [ ! -f "$moved/share/licenses/s2geometry/$record" ]; then
+              echo "the build graph installed no share/licenses/s2geometry/$record" >&2
+              ls -l "$moved/share/licenses/s2geometry" >&2 || true
+              exit 1
+            fi
+          done
+
+          # The three texts covering the compiler's shipped libc++, libc++abi
+          # and libunwind.  This job is an ELF shared delivery, which is the
+          # one route that compiles `libs2cpp`, and `libs2cpp` is a
+          # redistribution of LLVM-project code under Apache-2.0 with the LLVM
+          # exception -- a grant the compiler's own MIT text above does not
+          # extend to -- so each component's `LICENSE.TXT` has to travel with
+          # it.  NOTICE.md and README.md both say *verbatim*, so this compares
+          # the installed bytes against the pinned compiler's own file rather
+          # than only checking that a file with the right name exists.  The
+          # static route gates the absence of all three instead.
+          lib_dir=$(zig env | sed -n 's/.*"lib_dir":[[:space:]]*"\([^"]*\)".*/\1/p')
+          if [ -z "$lib_dir" ]; then
+            echo "could not read the compiler's lib_dir out of 'zig env'" >&2
+            exit 1
+          fi
+          for runtime in libcxx libcxxabi libunwind; do
+            installed="$moved/share/licenses/s2geometry/LICENSE.$runtime.txt"
+            origin="$lib_dir/$runtime/LICENSE.TXT"
+            if [ ! -f "$installed" ]; then
+              echo "the ELF shared build installed no $installed" >&2
+              ls -l "$moved/share/licenses/s2geometry" >&2 || true
+              exit 1
+            fi
+            if [ ! -f "$origin" ]; then
+              echo "the pinned compiler has no $origin to check $installed against" >&2
+              exit 1
+            fi
+            if ! cmp -s "$installed" "$origin"; then
+              echo "$installed is not the pinned compiler's own $origin, verbatim" >&2
+              cmp "$installed" "$origin" >&2 || true
+              exit 1
+            fi
+            echo "  LICENSE.$runtime.txt is the pinned compiler's own LICENSE.TXT, byte for byte"
+          done
+
+          # A C consumer of the relocated tree, reached the way a C program
+          # reaches it: the installed header, and whatever pkg-config says the
+          # libraries are.  No include path, no `-L`, no library name and no
+          # `-lc++` written by hand -- if the metadata is wrong, this fails.
+          #
+          # The expected values are fixed by hand here, from the id layout in
+          # `src/s2/s2cell_id.h`: a level-0 cell id is (face << 61) | (1 << 60)
+          # (`:97,:101`), so face 0 is 0x1000000000000000, and the face-0 root
+          # spells the token "1" because the codec strips trailing zero nibbles
+          # (`src/s2/s2cell_id.cc:231-232`).  "876[ee99" is the malformed token
+          # `testdata/golang_cellid_tokens.tsv` records from golang/geo's own
+          # table.
+          cat > "$RUNNER_TEMP/shared_c_consumer.c" <<'C'
+          #include <s2geometry_bridge.h>
+
+          #include <inttypes.h>
+          #include <stdint.h>
+          #include <stdio.h>
+          #include <string.h>
+
+          static int fail(int code, const char *what) {
+            std::printf("shared installed C consumer: check %d failed (%s)\n", code, what);
+            return code;
+          }
+
+          int main(void) {
+            uint64_t id = 0;
+            int level = -1;
+            size_t len = 0;
+            char token[32];
+
+            if (s2br_cell_from_token("1", 1, &id) != S2BRIDGE_OK) return fail(1, "from_token(\"1\")");
+            if (id != UINT64_C(0x1000000000000000)) {
+              std::printf("  face 0 root id = 0x%016" PRIx64 ", expected 0x1000000000000000\n", id);
+              return fail(2, "face 0 root id");
+            }
+            if (!s2br_cell_is_valid(id)) return fail(3, "is_valid");
+            if (!s2br_cell_is_face(id)) return fail(4, "is_face");
+            if (s2br_cell_level(id, &level) != S2BRIDGE_OK || level != 0) return fail(5, "level 0");
+
+            if (s2br_cell_to_token(id, token, sizeof token, &len) != S2BRIDGE_OK) return fail(6, "to_token");
+            if (len != 1 || strcmp(token, "1") != 0) {
+              std::printf("  face 0 root token = \"%s\" (%" PRIu64 " chars), expected \"1\"\n", token, (uint64_t)len);
+              return fail(7, "face 0 root token");
+            }
+
+            if (s2br_cell_from_token("876[ee99", 8, &id) != S2BRIDGE_INVALID_ARGUMENT) return fail(8, "malformed token rejected");
+            if (s2br_cell_from_token("1", 0, &id) != S2BRIDGE_INVALID_ARGUMENT) return fail(9, "zero-length token rejected");
+
+            std::printf("shared installed C consumer\n");
+            std::printf("  relocated prefix %s\n", "resolved by pkg-config and $ORIGIN");
+            std::printf("  face 0 root      0x%016" PRIx64 " level %d token \"%s\"\n", id, level, token);
+            return 0;
+          }
+          C
+
+          cflags=$(pkg-config --cflags s2geometry)
+          libs=$(pkg-config --libs s2geometry)
+          echo "  pkg-config --cflags: $cflags"
+          echo "  pkg-config --libs:   $libs"
+          zig cc -std=c11 $cflags \
+            "$RUNNER_TEMP/shared_c_consumer.c" \
+            $libs \
+            -o "$RUNNER_TEMP/shared_c_consumer"
+          "$RUNNER_TEMP/shared_c_consumer"
 
   cross:
     name: check ${{ matrix.target }}

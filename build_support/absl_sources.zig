@@ -249,6 +249,8 @@ pub const sources = [_][]const u8{
     "absl/strings/str_split.cc",
     "absl/strings/substitute.cc",
     // absl::strings_internal
+    // CMake compiles this .cc from HDRS together with the SRCS list.
+    "absl/strings/internal/escaping.cc",
     "absl/strings/internal/ostringstream.cc",
     "absl/strings/internal/utf8.cc",
     // absl::str_format_internal
