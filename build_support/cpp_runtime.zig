@@ -156,7 +156,7 @@ const flags = [_][]const u8{
     "-Wno-suggest-override",
 };
 
-// Zig 0.16 src/libs/libcxx.zig, base plus threaded sources. The compiler
+// Base plus threaded sources. The compiler
 // excludes filesystem/int128_builtins.cpp because compiler-rt provides it,
 // and selects the serial PSTL backend rather than libdispatch.
 const libcxx_files = [_][]const u8{

@@ -33,10 +33,10 @@
 
 | Target or mode | Boundary |
 |---|---|
-| `wasm32-wasi` | The existing patch targets Zig 0.16.0's standard library, so WASI is not supported by this Zig 0.17.0 port. Dynamic linkage is unavailable. |
+| `wasm32-wasi` | The checked-in patch targets Zig 0.16.0's standard library. Dynamic linkage is unavailable. |
 | Darwin | CCTZ needs Apple's CoreFoundation framework. The graph declares the framework but does not provide an Apple SDK. |
 | Windows | Abseil needs `dbghelp`. The loader resolves DLL dependencies by name beside each DLL. |
 | OpenBSD/NetBSD PowerPC | Abseil uses the unscaled cycle clock because these targets lack a supported timebase-frequency query. |
 | `-fsys=s2` | Requires installed S2 and Abseil libraries for the selected target. The package does not infer their system dependencies. |
 
-On WASI, the SDK supplies documented `getpid` and synchronous signal emulation, not a host PID or POSIX signal semantics. Async-signal-safe support is unavailable. The smoke program's output path currently traps in Zig's threaded `Io.Threaded.fileWritePositional`.
+On WASI, the SDK supplies documented `getpid` and synchronous signal emulation, not a host PID or POSIX signal semantics. Async-signal-safe support is unavailable. The smoke program's output path trapped in Zig's threaded `Io.Threaded.fileWritePositional` (observed with Zig 0.16; not rechecked on 0.17).

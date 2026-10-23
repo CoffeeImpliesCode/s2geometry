@@ -31,7 +31,7 @@ Google Inc.
 
 ### Zig compiler files and runtime
 
-The Zig 0.16.0 compiler is not redistributed or modified. `build_support/wasi_stdlib.patch` is fork-authored and changes only `std/heap.zig` and `std/Io/Threaded.zig` in an external compiler-library copy. Those compiler files retain their MIT (Expat) terms; their complete licence text, “Copyright (c) Zig contributors”, is copied verbatim to `build_support/zig-0.16-LICENSE.txt`. The patch itself is covered by the fork's Apache-2.0 grant, not by that MIT text.
+The package's Zig 0.17.0 compiler is not redistributed or modified. `build_support/wasi_stdlib.patch` is fork-authored and changes only `std/heap.zig` and `std/Io/Threaded.zig` in an external copy of Zig 0.16.0's standard library. Those compiler files retain their MIT (Expat) terms; their complete licence text, “Copyright (c) Zig contributors”, is copied verbatim to `build_support/zig-0.16-LICENSE.txt`. The patch itself is covered by the fork's Apache-2.0 grant, not by that MIT text.
 
 On ELF with `-Dlinkage=dynamic`, the build compiles the compiler-shipped libc++, libc++abi and libunwind sources into `libs2cpp.so.0.16.0`. Each component keeps the LLVM project's Apache-2.0-with-LLVM-exception terms; its `LICENSE.TXT` is installed verbatim as `LICENSE.libcxx.txt`, `LICENSE.libcxxabi.txt` and `LICENSE.libunwind.txt`. Static, WASI, Darwin and Windows builds do not ship this runtime. The WASI SDK sysroot, Wasmtime and CoreFoundation are not redistributed.
 

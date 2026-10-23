@@ -10,7 +10,7 @@
  *
  * Why a bridge at all: `addTranslateC` translates C, and the upstream library
  * is C++17 with classes, virtual `S2Region` dispatch and `absl::string_view`.
- * Translating a C++ header is not something Zig 0.16 does, so the C surface a
+ * Zig's `translate-c` translates C, not C++, so the C surface a
  * Zig caller needs is written once, here, as a header the translator can read
  * and a translation unit the compiler can compile.  This header is therefore
  * plain C99 with `extern "C"` guards: it must stay parseable by a C

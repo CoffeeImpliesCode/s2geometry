@@ -10,8 +10,8 @@ Target
 
 Why
   A threaded libc-linked wasm32-wasi build (WASI SDK 34, WASIp1-threads, single_threaded=false
-  on every module) does not compile against stock Zig 0.16. Neither hunk adds a capability,
-  silences a diagnostic or substitutes a fake provider.
+  on every module) failed to compile against stock Zig 0.16 (observed with Zig 0.16; not rechecked on 0.17).
+  Neither hunk adds a capability, silences a diagnostic or substitutes a fake provider.
 
 1. std/heap.zig -- threaded libc-linked wasm32-wasi page allocator.
    `page_allocator` selects the real `c_allocator` for the wasm32-wasi + libc +
