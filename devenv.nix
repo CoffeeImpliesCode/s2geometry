@@ -3,10 +3,10 @@
 
 let
   lib = pkgs.lib;
-  zig = pkgs.zig_0_16;
+  zig = pkgs.zig_0_17;
 
   sdk = linkage: pkgs.callPackage ./package.nix {
-    zig = pkgs.zig_0_16;
+    zig = pkgs.zig_0_17;
     inherit linkage;
   };
 
@@ -121,8 +121,8 @@ in
 
   assertions = [
     {
-      assertion = zig.version == "0.16.0";
-      message = "devenv.nix: this SDK requires Zig 0.16.0; pkgs.zig_0_16 is ${zig.version}.";
+      assertion = zig.version == "0.17.0";
+      message = "devenv.nix: this SDK requires Zig 0.17.0; pkgs.zig_0_17 is ${zig.version}.";
     }
   ];
 }

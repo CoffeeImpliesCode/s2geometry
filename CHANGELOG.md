@@ -1,5 +1,10 @@
 # Changelog
 
+- Port to Zig 0.17.0.
+- Nested consumer builds forward toolchain and global-cache paths through the environment.
+- The consumer step installs targets that need optional emulators instead of running them.
+- Nested consumer installs use the parent build's install prefix.
+
 - System mode (`-fsys=s2`) resolves the selected installation through `pkg-config` and honors the requested linkage.
 - Devenv tasks build the requested package outputs from the project shell.
 - The standalone consumer forwards target, linkage, runtime/provider, cache, prefix, job-count, summary and program arguments; it runs only when the executor supports it.

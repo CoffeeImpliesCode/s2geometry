@@ -14,7 +14,7 @@
 //! List fills use a count-then-fill pattern. Short buffers return `BufferTooSmall` without writes;
 //! invalid inputs return `InvalidArgument`.
 //!
-//! The package targets Zig 0.16.0.
+//! The package targets Zig 0.17.0.
 
 const std = @import("std");
 

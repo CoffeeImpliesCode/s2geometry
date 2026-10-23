@@ -57,7 +57,7 @@ pub fn build(b: *std.Build) void {
     // *shared* bridge, or the nested build would prove the static graph while
     // the outer one reported a shared delivery as green.
     const linkage = b.option(
-        std.builtin.LinkMode,
+        std.lang.LinkMode,
         "linkage",
         "The linkage to ask the s2geometry dependency for: static archives " ++
             "(its default) or real shared objects. This package compiles no " ++
@@ -133,12 +133,9 @@ pub fn build(b: *std.Build) void {
     }
     b.installArtifact(exe);
 
-    // This package's arguments are the program's, and this is the only place
-    // that hands them over.  Driven directly, `zig build run -- …`.  Driven by
-    // the `consumer` step of the package that depends on this one, that build
-    // forwards its own `b.args` after a `--`, which is why the step below
-    // forwards them rather than inventing arguments of its own.
+    // Pass-through arguments are the program's, whether this package runs
+    // directly or through the parent package's consumer step.
     const run_exe = b.addRunArtifact(exe);
-    if (b.args) |args| run_exe.addArgs(args);
+    run_exe.addPassthruArgs();
     b.step("run", "Build and run the consumer program").dependOn(&run_exe.step);
 }

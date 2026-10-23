@@ -41,7 +41,7 @@ const cpp_runtime_version: std.SemanticVersion = .{ .major = 0, .minor = 16, .pa
 const system_pkg_config_module = "s2geometry";
 
 /// Targets compiled by `check` when no target option is named.
-/// `aarch64-macos-none` is the ordinary macOS ABI in Zig 0.16.
+/// `aarch64-macos-none` is the ordinary macOS ABI in Zig 0.17.0.
 const check_targets = [_]std.Target.Query{
     .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu },
     .{ .cpu_arch = .aarch64, .os_tag = .linux, .abi = .gnu },
@@ -81,7 +81,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const wasi_sysroot = b.option([]const u8, "wasi-sysroot", "Complete WASI SDK 34+ sysroot with WASIp1-threads EH C/C++ providers");
     const linkage_option = b.option(
-        std.builtin.LinkMode,
+        std.lang.LinkMode,
         "linkage",
         "Deliver this package's own native libraries as static archives (the " ++
             "default, and this SDK's linkage policy) or as real shared " ++
@@ -95,7 +95,7 @@ pub fn build(b: *std.Build) void {
 
     // Bundled delivery defaults to static; system mode retains its dynamic link default.
     const system_mode = b.systemIntegrationOption("s2", .{ .default = false });
-    const delivery: std.builtin.LinkMode = linkage_option orelse .static;
+    const delivery: std.lang.LinkMode = linkage_option orelse .static;
 
     // Linkage selects installed artifacts; runtime selects how the facade resolves symbols.
     const runtime_option = b.option(
@@ -158,7 +158,7 @@ pub fn build(b: *std.Build) void {
 
     const run_smoke = b.addRunArtifact(smoke_exe);
     run_smoke.has_side_effects = true;
-    if (b.args) |args| run_smoke.addArgs(args);
+    run_smoke.addPassthruArgs();
     b.step("smoke", "Run the deterministic S2 smoke program").dependOn(&run_smoke.step);
 
     // Expose test runs for every target; the build runner selects or rejects an executor.
@@ -213,8 +213,8 @@ pub fn build(b: *std.Build) void {
 fn addGraph(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    linkage: std.builtin.LinkMode,
+    optimize: std.lang.Optimize,
+    linkage: std.lang.LinkMode,
     runtime_loaded: bool,
     public: bool,
     wasi_sysroot: ?[]const u8,
@@ -297,8 +297,8 @@ fn addGraph(
 fn addNativeGraph(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    linkage: std.builtin.LinkMode,
+    optimize: std.lang.Optimize,
+    linkage: std.lang.LinkMode,
     provider: ?wasi_provider.Provider,
     cache_paths: bool,
 ) NativeGraph {
@@ -321,7 +321,7 @@ fn configureClock(module: *std.Build.Module, target: std.Build.ResolvedTarget) v
 
 /// Shared ELF libraries use one source-built C++ runtime.
 /// Duplicate C++ runtimes cannot share locale facet identities.
-fn sharedCppOwner(target: std.Build.ResolvedTarget, linkage: std.builtin.LinkMode) bool {
+fn sharedCppOwner(target: std.Build.ResolvedTarget, linkage: std.lang.LinkMode) bool {
     return linkage == .dynamic and target.result.ofmt == .elf;
 }
 
@@ -342,11 +342,11 @@ fn configureSharedCpp(
 fn addAbseil(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.Optimize,
     windows: bool,
     provider: ?wasi_provider.Provider,
     cpp_lib: ?*std.Build.Step.Compile,
-    linkage: std.builtin.LinkMode,
+    linkage: std.lang.LinkMode,
     cache_paths: bool,
 ) *std.Build.Step.Compile {
     const module = b.createModule(.{
@@ -391,11 +391,11 @@ fn addAbseil(
 fn addS2(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.Optimize,
     provider: ?wasi_provider.Provider,
     absl_lib: *std.Build.Step.Compile,
     cpp_lib: ?*std.Build.Step.Compile,
-    linkage: std.builtin.LinkMode,
+    linkage: std.lang.LinkMode,
     cache_paths: bool,
 ) *std.Build.Step.Compile {
     const module = b.createModule(.{
@@ -436,11 +436,11 @@ fn addS2(
 fn addBridge(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.Optimize,
     provider: ?wasi_provider.Provider,
     s2_lib: *std.Build.Step.Compile,
     cpp_lib: ?*std.Build.Step.Compile,
-    linkage: std.builtin.LinkMode,
+    linkage: std.lang.LinkMode,
     cache_paths: bool,
 ) *std.Build.Step.Compile {
     const module = b.createModule(.{
@@ -491,7 +491,7 @@ fn addBridge(
 fn addTests(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.Optimize,
     module: *std.Build.Module,
     provider: ?wasi_provider.Provider,
     comptime name: []const u8,
@@ -513,7 +513,7 @@ fn addTests(
 fn addSmoke(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.Optimize,
     module: *std.Build.Module,
     provider: ?wasi_provider.Provider,
 ) *std.Build.Step.Compile {
@@ -536,8 +536,8 @@ fn addCheck(
     b: *std.Build,
     step: *std.Build.Step,
     raw_target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    linkage: std.builtin.LinkMode,
+    optimize: std.lang.Optimize,
+    linkage: std.lang.LinkMode,
     runtime_loaded: bool,
     wasi_sysroot: ?[]const u8,
 ) void {
@@ -561,11 +561,11 @@ fn addCheck(
 fn addSystemMode(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.Optimize,
     wasi_sysroot: ?[]const u8,
-    linkage: std.builtin.LinkMode,
-    installed_linkage: std.builtin.LinkMode,
-    linkage_option: ?std.builtin.LinkMode,
+    linkage: std.lang.LinkMode,
+    installed_linkage: std.lang.LinkMode,
+    linkage_option: ?std.lang.LinkMode,
     runtime_option: ?bool,
 ) void {
     const runtime_loaded = runtime_option orelse false;
@@ -651,7 +651,7 @@ fn addSystemMode(
 
     const run_smoke = b.addRunArtifact(smoke_exe);
     run_smoke.has_side_effects = true;
-    if (b.args) |args| run_smoke.addArgs(args);
+    run_smoke.addPassthruArgs();
     const smoke_step = b.step("smoke", "Run the deterministic S2 smoke program against the installed library");
     smoke_step.dependOn(&run_smoke.step);
 
@@ -688,14 +688,14 @@ fn addSystemMode(
 }
 
 /// Builds the consumer package with this graph's target, toolchain, and modes.
-/// Uses separate local caches and forwards a caller-selected install prefix.
-/// Runs only when the build runner can execute the selected target.
+/// Uses a nested cache and the outer install prefix.
+/// Runs native or Rosetta targets; other cross-targets install without execution.
 fn addConsumerStep(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.Optimize,
     use_system: bool,
-    linkage: ?std.builtin.LinkMode,
+    linkage: ?std.lang.LinkMode,
     runtime_loaded: ?bool,
     wasi_sysroot: ?[]const u8,
 ) void {
@@ -705,11 +705,21 @@ fn addConsumerStep(
     const cpu = query.serializeCpuAlloc(b.allocator) catch @panic("OOM");
     defer b.allocator.free(cpu);
 
-    // Use this build's compiler for the nested build.
-    const run = b.addSystemCommand(&.{ b.graph.zig_exe, "build" });
+    const launcher = b.addExecutable(.{
+        .name = "s2geometry-consumer-build",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("build_support/consumer.zig"),
+            .target = b.graph.host,
+            .optimize = .debug,
+        }),
+    });
+    const run = b.addRunArtifact(launcher);
+    run.addDirectoryArg2(std.Build.LazyPath.zig_lib, .{ .make_absolute = true });
+    run.addDirectoryArg2(.{ .relative = .{ .base = .global_cache } }, .{ .make_absolute = true });
+    run.addArgs(&.{ b.graph.zig_exe, "build" });
     run.setName("consumer package");
     run.setCwd(b.path("consumer"));
-    run.addArg(if (hostCanExecute(b, target)) "run" else "install");
+    run.addArg(if (hostCanRunOnHost(b, target)) "run" else "install");
     run.addArg(b.fmt("-Dtarget={s}", .{triple}));
     run.addArg(b.fmt("-Dcpu={s}", .{cpu}));
     run.addArg(b.fmt("-Doptimize={s}", .{@tagName(optimize)}));
@@ -724,71 +734,50 @@ fn addConsumerStep(
     // Preserve system mode and the optional WASI sysroot in the nested build.
     run.addArg(if (use_system) "-fsys=s2" else "-fno-sys=s2");
     if (wasi_sysroot) |root| run.addArg(b.fmt("-Dwasi-sysroot={s}", .{root}));
-    // Forward this compiler's standard-library path to the nested build.
-    if (b.graph.zig_lib_directory.path) |lib_dir| {
-        run.addArgs(&.{ "--zig-lib-dir", lib_dir });
-    }
-    // Forward enabled executors and libc runtimes so the child uses the same runner.
-    if (b.enable_darling) run.addArg("-fdarling");
-    if (b.enable_qemu) run.addArg("-fqemu");
-    if (b.enable_rosetta) run.addArg("-frosetta");
-    if (b.enable_wasmtime) run.addArg("-fwasmtime");
-    if (b.enable_wine) run.addArg("-fwine");
-    if (b.libc_runtimes_dir) |runtimes| run.addArgs(&.{ "--libc-runtimes", runtimes });
+    // Forward third-party executor settings without reading make-phase flags.
+    run.addThirdPartyEnabledArgDarling(.{ .enabled = "-fdarling" });
+    run.addThirdPartyEnabledArgQemu(.{ .enabled = "-fqemu" });
+    run.addThirdPartyEnabledArgRosetta(.{ .enabled = "-frosetta" });
+    run.addThirdPartyEnabledArgWasmtime(.{ .enabled = "-fwasmtime" });
+    run.addThirdPartyEnabledArgWine(.{ .enabled = "-fwine" });
     // Forward this package's job width and summary; child builds do not inherit them.
     run.addArg("-j8");
     // Keep the summary option in its two-token form.
     run.addArgs(&.{ "--summary", "all" });
-    // Give the nested graph a local cache subdirectory to avoid manifest conflicts.
-    if (b.cache_root.path) |cache| {
-        run.addArgs(&.{ "--cache-dir", b.fmt("{s}/consumer", .{cache}) });
-    }
-    // Forward the shared global cache unchanged.
-    if (b.graph.global_cache_root.path) |global_cache| {
-        run.addArgs(&.{ "--global-cache-dir", global_cache });
-    }
-    // Make a caller-selected prefix absolute because the child runs in consumer/.
-    const default_prefix = b.build_root.join(b.allocator, &.{"zig-out"}) catch @panic("OOM");
-    if (!std.mem.eql(u8, b.install_prefix, default_prefix)) {
-        const prefix = if (std.fs.path.isAbsolute(b.install_prefix))
-            b.install_prefix
-        else
-            b.pathJoin(&.{ b.graph.cache.cwd, b.install_prefix });
-        run.addArg("--prefix");
-        run.addArg(prefix);
-    }
+    // Keep the nested local cache separate.
+    run.addArg("--cache-dir");
+    run.addDirectoryArg2(std.Build.LazyPath.cache_root.path(b, "consumer"), .{ .make_absolute = true });
+    // Resolve the outer install prefix at make time.
+    run.addArg("--prefix");
+    run.addDirectoryArg2(.{ .relative = .{ .base = .install_prefix } }, .{ .make_absolute = true });
     // Forward consumer-program arguments after `--`.
-    if (b.args) |args| {
-        run.addArg("--");
-        run.addArgs(args);
-    }
+    run.addArg("--");
+    run.addPassthruArgs();
     run.has_side_effects = true;
     b.step(
         "consumer",
-        "Build the consumer/ package, and run it when this host can execute the selected target",
+        "Build the consumer package and run it for native or Rosetta targets",
     ).dependOn(&run.step);
 }
 
-/// Checks whether Zig's build runner can execute the target.
-/// Includes QEMU's GNU libc runtime requirement.
-fn hostCanExecute(b: *std.Build, target: std.Build.ResolvedTarget) bool {
+/// Selects executor cases visible during configuration; third-party flags arrive at make time.
+fn hostCanRunOnHost(b: *std.Build, target: std.Build.ResolvedTarget) bool {
     const host = &b.graph.host.result;
     const candidate = &target.result;
     const options: std.zig.system.GetExternalExecutorOptions = .{
-        .allow_darling = b.enable_darling,
-        .allow_qemu = b.enable_qemu,
-        .allow_wasmtime = b.enable_wasmtime,
-        .allow_wine = b.enable_wine,
-        // Match Zig Run's GNU libc QEMU runtime requirement.
-        .qemu_fixes_dl = candidate.isGnuLibC() and b.libc_runtimes_dir != null,
+        .host_cpu_arch = host.cpu.arch,
+        .host_os_tag = host.os.tag,
+        .link_mode = .dynamic,
         .link_libc = true,
     };
-    return switch (std.zig.system.getExternalExecutor(b.graph.io, host, candidate, options)) {
+    if (candidate.os.tag == host.os.tag) {
+        if (candidate.dynamic_linker.get()) |dynamic_linker| {
+            b.dependOnFileMetadata(b.graph.cwdRelativePath(dynamic_linker));
+        }
+    }
+    return switch (std.zig.system.getExternalExecutor(b.graph.io, candidate, options)) {
         .native, .rosetta => true,
-        .wine, .wasmtime, .darling => true,
-        // GNU libc targets need `--libc-runtimes` to run under QEMU.
-        .qemu => !(candidate.isGnuLibC() and b.libc_runtimes_dir == null),
-        .bad_dl, .bad_os_or_cpu => false,
+        else => false,
     };
 }
 
@@ -801,7 +790,7 @@ fn targetHasDynamicLinker(target: std.Build.ResolvedTarget) bool {
 /// Static delivery remains available; never substitute it for a requested shared object.
 fn rejectUnsupportedDynamicLinkage(
     target: std.Build.ResolvedTarget,
-    linkage: std.builtin.LinkMode,
+    linkage: std.lang.LinkMode,
     where: []const u8,
 ) void {
     if (linkage != .dynamic or targetHasDynamicLinker(target)) return;
@@ -881,7 +870,7 @@ const licence_records = [_]struct { from: []const u8, to: []const u8 }{
 fn addPkgConfig(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    linkage: std.builtin.LinkMode,
+    linkage: std.lang.LinkMode,
 ) void {
     // Select private link flags for the target platform.
     const platform_private =

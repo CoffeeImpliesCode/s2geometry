@@ -47,7 +47,7 @@ pub fn add(b: *std.Build, target: std.Build.ResolvedTarget) *std.Build.Step.Comp
     std.debug.assert(target.result.ofmt == .elf);
     const module = b.createModule(.{
         .target = target,
-        .optimize = .ReleaseFast,
+        .optimize = .fast,
         .link_libc = true,
         .link_libcpp = false,
         .pic = true,
@@ -141,7 +141,7 @@ pub fn installLicences(b: *std.Build) void {
 }
 
 fn compilerPath(b: *std.Build, parts: []const []const u8) std.Build.LazyPath {
-    return .{ .cwd_relative = b.graph.zig_lib_directory.join(b.allocator, parts) catch @panic("OOM") };
+    return std.Build.LazyPath.zig_lib.path(b, b.pathJoin(parts));
 }
 
 const flags = [_][]const u8{

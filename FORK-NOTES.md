@@ -25,12 +25,15 @@
 - `-Druntime=true` selects explicit provider loading through a process-lifetime dispatch table. It is independent of linkage and does not link native archives into the facade.
 - `-fsys=s2` keeps the fork bridge and links an installed `s2geometry` pkg-config package instead of compiling bundled S2 and Abseil. It does not inspect or supply that package's dependency closure.
 - `package.nix` supplies the static and shared variants for both `flake.nix` and `devenv.nix`. The development shell carries tools only.
+- The consumer step runs native/Rosetta targets; the Zig 0.17 configurer cannot read optional emulator flags, so it installs other cross-targets instead.
+- Nested consumer installs use the outer build's install prefix, which Zig 0.17 exposes only as a make-time path.
+- `build_support/consumer.zig` forwards make-time paths through `ZIG_LIB_DIR` and `ZIG_GLOBAL_CACHE_DIR`; Zig 0.17 rejects their former `zig build` flags.
 
 ## Platform boundaries
 
 | Target or mode | Boundary |
 |---|---|
-| `wasm32-wasi` | Requires a WASI SDK 34+ WASIp1-threads sysroot and a patched Zig 0.16.0 standard-library copy selected with `--zig-lib-dir`. Dynamic linkage is unavailable. |
+| `wasm32-wasi` | The existing patch targets Zig 0.16.0's standard library, so WASI is not supported by this Zig 0.17.0 port. Dynamic linkage is unavailable. |
 | Darwin | CCTZ needs Apple's CoreFoundation framework. The graph declares the framework but does not provide an Apple SDK. |
 | Windows | Abseil needs `dbghelp`. The loader resolves DLL dependencies by name beside each DLL. |
 | OpenBSD/NetBSD PowerPC | Abseil uses the unscaled cycle clock because these targets lack a supported timebase-frequency query. |

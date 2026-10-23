@@ -1,7 +1,7 @@
 # s2geometry
 
 This package builds Google S2 Geometry Library `v0.14.0` with Abseil C++ LTS `20250814.1`.
-A Zig 0.16.0 build graph compiles the upstream C++ behind this fork's C bridge and typed Zig facade.
+This package uses a Zig 0.17.0 build graph to compile upstream C++ behind this fork's C bridge and typed Zig facade.
 
 ## Source deviations from upstream
 
@@ -35,7 +35,7 @@ Eight upstream source files have bounded portability changes. Their upstream lic
 | ELF targets | Static or shared delivery. Shared delivery includes `libs2cpp.so.0`, built from the pinned Zig compiler's C++ runtime sources. |
 | `x86_64-windows-gnu` | Abseil links `dbghelp`; DLL dependencies resolve beside the DLL that names them. |
 | Darwin | CCTZ needs Apple's `CoreFoundation` framework, supplied by an installed Apple SDK. |
-| `wasm32-wasi` | Static only; requires a WASI SDK 34+ WASIp1-threads sysroot and patched Zig 0.16.0 standard-library copy. Wasmtime 46.0.3 is the only version exercised; its `-Sthreads` warning says the flag becomes an error in 47.0.0, and Wasmtime 49+ lacks threads. Smoke output currently traps in Zig's threaded writer. |
+| `wasm32-wasi` | Static only; requires a WASI SDK 34+ WASIp1-threads sysroot and the existing patched Zig 0.16.0 standard-library copy, which is not ported to this Zig 0.17.0 package. Wasmtime 46.0.3 is the only version exercised; its `-Sthreads` warning says the flag becomes an error in 47.0.0, and Wasmtime 49+ lacks threads. Smoke output currently traps in Zig's threaded writer. |
 | OpenBSD/NetBSD PowerPC | Uses Abseil's unscaled cycle clock; these targets lack the required timebase-frequency query. |
 | `-fsys=s2` | Requires an installed `s2geometry` pkg-config package and its S2/Abseil libraries. |
 

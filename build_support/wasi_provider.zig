@@ -52,35 +52,21 @@ pub const Provider = struct {
         };
     }
 
-    /// The single place this provider decides a WASI module's threading model.
+    /// The single place this provider selects a WASI module's threading model.
     ///
-    /// Every module this graph builds links one libc -- the SDK 34
-    /// WASIp1-threads sysroot -- so every module must also share one threading
-    /// model.  Zig 0.16's `std.c._errno` on `.wasi` is not that libc's
-    /// `__errno_location()`: `lib/std/c.zig:7096` selects
-    /// `private.errnoFromThreadLocal`, which returns `&private.errno`, declared
-    /// `extern threadlocal var errno: c_int` at `lib/std/c.zig:11572`
-    /// (`:11574-11576`).  A module left at the `wasm32-wasi` default compiles
-    /// that storage somewhere other than the SDK's shared-memory TLS, and one
-    /// binary ends up with two errnos.  Measured: a C function that only
-    /// assigns `errno` and returns it wrote 28 at `0x1000000`, where the SDK
-    /// keeps it, while `std.c._errno` read 0 out of address `0x0`.  The
-    /// observable consequence was a `pwritev` that returned -1 classified as a
-    /// success, because the errno it had to consult was not the one that call
-    /// had set.
+    /// Every module links the SDK 34 WASIp1-threads sysroot. Keep Zig's
+    /// `std.c._errno` in that libc's shared-memory TLS: Zig 0.17's `.wasi`
+    /// implementation uses `private.errnoFromThreadLocal`, which returns
+    /// `&private.errno` (`extern threadlocal var errno: c_int`). Leaving
+    /// `single_threaded` unset compiles separate storage and gives one binary
+    /// two `errno` variables.
     ///
-    /// A null `Module.single_threaded` emits no flag at all
-    /// (`lib/std/Build/Module.zig:546`: `addFlag` returns on null), so a module
-    /// left null silently keeps the target's single-threaded default while its
-    /// siblings are told otherwise.  That is why the flag is set here, on every
-    /// module the provider configures -- the three C++ libraries, the bridge,
-    /// the translated header, the facade, the tests and the smoke root -- rather
-    /// than at individual call sites that can drift apart.
+    /// Set this on every module linked against the sysroot.
     pub fn configureModule(self: Provider, module: *std.Build.Module) void {
         module.single_threaded = false;
         module.link_libcpp = false;
-        // Preserve fatal UB detection without the Zig 0.16 UBSan runtime's
-        // incompatible one-argument nonnull_return_v1 Wasm signature.
+        // Preserve fatal UB detection without Zig 0.17's incompatible Wasm UBSan
+        // `nonnull_return_v1` handler.
         module.sanitize_c = .trap;
         // Ordinary -I paths put libc++'s C wrappers before builtin C headers;
         // -isystem paths do not have the required search precedence here.
@@ -97,7 +83,7 @@ pub const Provider = struct {
             module.addObjectFile(self.eh_lib_dir.path(module.owner, name));
         }
         module.addObjectFile(self.lib_dir.path(module.owner, "libwasi-emulated-signal.a"));
-        // Zig 0.16's libc-linked nonsecure RNG fallback references getpid.
+        // Zig 0.17's libc-linked nonsecure RNG fallback references getpid.
         // Use the SDK's documented identifier emulation, not a host import;
         // this does not provide host PIDs or independent process namespaces.
         module.addObjectFile(self.lib_dir.path(module.owner, "libwasi-emulated-getpid.a"));

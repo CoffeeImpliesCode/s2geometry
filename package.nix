@@ -8,7 +8,7 @@
 assert linkage == "static" || linkage == "dynamic";
 
   # Keep the pinned compiler version aligned with build.zig.zon.
-assert zig.version == "0.16.0";
+assert zig.version == "0.17.0";
 
   # Nix cross-builds are refused because Zig defaults to the builder target.
 assert if stdenv.hostPlatform.system == stdenv.buildPlatform.system then
@@ -189,7 +189,7 @@ stdenv.mkDerivation {
       relocatable pkg-config metadata and every licence text the output
       carries.${if cppRuntime then ''
         On an ELF platform the shared delivery's fourth library is
-        libs2cpp.so.0, compiled from the pinned Zig 0.16.0 compiler's own
+        libs2cpp.so.0, compiled from the pinned Zig 0.17.0 compiler's own
         libc++, libc++abi and libunwind sources: Zig's ordinary static C++
         runtime hides its exports, so two images that each carry it cannot
         share one locale facet registry. It is built at the compiler's own
