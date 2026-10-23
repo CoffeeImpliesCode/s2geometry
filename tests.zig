@@ -1,105 +1,31 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Behavioural tests for the S2 facade.
-//!
-//! Every expected value here is an independent known answer published either by
-//! google/s2geometry or by golang/geo, read out of `testdata/` with
-//! `@embedFile`, plus a handful of mathematical identities that hold for any
-//! correct implementation. Nothing here calls the library and then declares its
-//! own output correct, and nothing pins a version string, an export, a default,
-//! or a copy.
-//!
-//! ## Why these fixtures
-//!
-//! S2 is a codec and a geometry engine at once, so a self-round-trip such as
-//! `toToken(fromToken(x)) == x` proves only that the codec agrees with itself.
-//! The fixtures used here are values some other implementation published:
-//!
-//!   * `testdata/golang_cellid_tokens.tsv` -- 32 token/id pairs and five
-//!     malformed tokens from golang/geo's `TestCellIDTokensNominal` and
-//!     `TestCellIDFromTokensErrorCases`. golang/geo is an independent
-//!     reimplementation of the same codec.
-//!   * `testdata/golang_cellid_latlng.tsv` -- 14 leaf-cell id <-> lat/lng pairs
-//!     from golang/geo's `TestCellIDLatLng`, whose own comment records that they
-//!     came from the C++ `s2cellid2latlngtestcase` program.
-//!   * `testdata/upstream_neighbors.tsv` -- neighbour, parent/child, containment
-//!     and projection-origin answers from `src/s2/s2cell_id_test.cc`,
-//!     `src/python/s2geometry_test.py` and golang/geo, one row kind per source.
-//!   * `testdata/upstream_coverer_sydney.txt` -- the 42-cell level-22 covering
-//!     that `src/s2/s2region_coverer_test.cc`'s `JavaCcConsistency` test
-//!     publishes for a polyline through two real Sydney coordinates, with those
-//!     coordinates and the options it used.
-//!   * `testdata/upstream_polar_closure.tsv` -- four `PolarClosure` answers from
-//!     `src/s2/s2latlng_rect_test.cc`: the pole and antimeridian cases.
-//!   * `testdata/golang_latlng_normalize.tsv` -- nine normalization answers from
-//!     golang/geo and ten validity answers from `src/s2/s2latlng_test.cc`.
-//!
-//! ## Mathematical identities used where no number is published
-//!
-//! The six cube faces tile the sphere, so their exact areas sum to 4*pi. Four
-//! children tile their parent, so their exact areas sum to the parent's. An
-//! octant of the unit sphere has solid angle exactly pi/2, and its three edges
-//! are each pi/2 radians long. A hemisphere is 2*pi. A spherical polygon's
-//! area is the excess of its interior angles over (n - 2)*pi, which fixes the
-//! pi/2, pi/4 and 3*pi/4 that the two overlapping wedges are held to. These
-//! follow from geometry, not from a measurement, and a failure in any of them
-//! is a real fault.
-//!
-//! ## Coverage
-//!
-//! Every public method of the facade is called from this file with concrete
-//! argument types, which is what makes `zig build check` a real compile of the
-//! facade for every target instead of a compile of an unreferenced archive.
-//!
-//! ## What a runtime-loading build needs
-//!
-//! Such a build has no library until `load` has been called, so every test
-//! calls `nativeReady()` first. That is a no-op at comptime in a linked build,
-//! which is the default and what every recorded gate in this repository has
-//! run.
-//!
-//! In a runtime-loading build the provider is named by the environment, in
-//! `S2GEOMETRY_TEST_PROVIDER`, and it has to be a shared build of *this
-//! package's own bridge*: an image exporting the 93 `s2br_*` entry points of
-//! `zig/bridge.h`, with `libs2` and `libabsl` in its own closure. An installed
-//! upstream `libs2` is not one, because upstream has no `s2br_*` header at all.
-//! `runtime/library.zig` states the whole boundary.
-//!
-//! Nothing here falls back to the bundled linkage and nothing is loaded by
-//! default: a runtime-loading build with the variable unset stops with the
-//! variable's name rather than quietly testing a linked library.
+//! Behavioral tests for the S2 facade against independent fixtures and geometric identities.
+//! Fixture data records upstream and golang/geo sources.
 
 const std = @import("std");
 const s2 = @import("s2geometry");
 const testing = std.testing;
 
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
-
-/// `token<TAB>id_hex`, plus `token<TAB>1` rows for tokens that must be rejected.
-/// golang/geo s2/cellid_test.go:343-380 and :391-425.
+/// Token/id pairs and malformed tokens (`golang/geo s2/cellid_test.go:343-425`).
 const tokens_tsv = @embedFile("testdata/golang_cellid_tokens.tsv");
 
-/// `id_hex<TAB>lat_deg<TAB>lng_deg`. golang/geo s2/cellid_test.go:176-191.
+/// Cell-id and latitude/longitude pairs (`golang/geo s2/cellid_test.go:176-191`).
 const latlng_tsv = @embedFile("testdata/golang_cellid_latlng.tsv");
 
-/// Neighbour, parent/child, containment and projection-origin answers; the
-/// file's own header names the source of each row kind.
+/// Neighbor, hierarchy, containment and projection answers; sources are in the fixture header.
 const neighbors_tsv = @embedFile("testdata/upstream_neighbors.tsv");
 
-/// The published Sydney covering and the coordinates and options it used.
-/// src/s2/s2region_coverer_test.cc:534-563.
+/// Published Sydney covering (`src/s2/s2region_coverer_test.cc:534-563`).
 const sydney_txt = @embedFile("testdata/upstream_coverer_sydney.txt");
 
-/// `PolarClosure` answers. src/s2/s2latlng_rect_test.cc:416-423.
+/// Polar-closure cases (`src/s2/s2latlng_rect_test.cc:416-423`).
 const polar_tsv = @embedFile("testdata/upstream_polar_closure.tsv");
 
-/// Normalization and validity answers. golang/geo s2/latlng_test.go:32-92 and
-/// src/s2/s2latlng_test.cc:56-57, :132-145, :151-166.
+/// Normalization and validity answers (`golang/geo s2/latlng_test.go:32-92`).
 const normalize_tsv = @embedFile("testdata/golang_latlng_normalize.tsv");
 
-/// Iterates the meaningful lines of an embedded fixture: no blanks, no comments.
+/// Iterates the non-empty lines of an embedded fixture.
 const Lines = struct {
     text: []const u8,
     index: usize = 0,
@@ -118,9 +44,7 @@ const Lines = struct {
     }
 };
 
-/// Splits a fixture line on tabs into `out`, returning the field count so a
-/// caller can assert the exact shape it expects. A line with more fields than
-/// `out` holds reports a count larger than `out.len` and writes nothing extra.
+/// Splits a tab-separated row and returns its field count; excess fields are not written.
 fn fields(line: []const u8, out: [][]const u8) usize {
     var count: usize = 0;
     var it = std.mem.splitScalar(u8, line, '\t');
@@ -131,10 +55,7 @@ fn fields(line: []const u8, out: [][]const u8) usize {
     return count;
 }
 
-/// A fixture field that is not a number is a bug in the fixture rather than a
-/// behavioural failure, so this stops with the offending field named. The
-/// alternative, a silent zero, would turn a broken fixture into a test that
-/// passes for the wrong reason.
+/// Parses a fixture float or panics with the invalid field.
 fn parseF64(text: []const u8) f64 {
     return std.fmt.parseFloat(f64, text) catch
         std.debug.panic("s2 fixture: not a number: {s}", .{text});
@@ -149,19 +70,14 @@ fn parseU64(text: []const u8) u64 {
         std.debug.panic("s2 fixture: not an integer: {s}", .{text});
 }
 
-/// The largest buffer a token or debug string can need. Upstream's token is at
-/// most 16 characters (`src/s2/s2cell_id.cc:232`) and its debug string at most
-/// `2 + kMaxLevel` (`src/s2/s2cell_id.cc:604-609`); either plus its NUL fits.
+/// Buffer capacity for upstream tokens and debug strings (`src/s2/s2cell_id.cc:232,604-609`).
 const text_buf_len = 64;
 
 fn cellIdLessThan(_: void, a: s2.CellId, b: s2.CellId) bool {
     return a.raw < b.raw;
 }
 
-/// Whether `got` holds the same cells as `want` with the same number of
-/// occurrences of each. `AppendAllNeighbors` appends a neighbour once per
-/// edge or vertex that reaches it, so for a cell at a face vertex the answer
-/// is a multiset rather than a set and a repeat is part of it
+/// Compares cell multisets; upstream may append a corner neighbor more than once.
 /// (`src/s2/s2cell_id.h:470-474`).
 fn expectSameCellMultiset(got: []const s2.CellId, want: []const s2.CellId) !void {
     try testing.expectEqual(want.len, got.len);
@@ -178,31 +94,12 @@ fn expectSameCellMultiset(got: []const s2.CellId, want: []const s2.CellId) !void
     }
 }
 
-// ---------------------------------------------------------------------------
-// The native library, in whichever configuration this build produced
-// ---------------------------------------------------------------------------
-
-/// A shared object exporting all **93** entry points `zig/bridge.h` declares,
-/// named by the environment in a runtime-loading build.
-///
-/// That is this package's own `libs2bridge.so.0` -- or `.dylib`, or
-/// `s2bridge.dll`. An installed upstream `libs2` is not one: every `s2br_*`
-/// symbol is defined in `zig/bridge.cc` in this repository, so upstream exports
-/// none of them (`runtime/library.zig` states the whole boundary).
+/// Environment variable naming a shared object that exports this package's bridge.
+/// Upstream `libs2` alone is not a provider because it has no `s2br_*` symbols.
 const provider_variable = "S2GEOMETRY_TEST_PROVIDER";
 
-/// Make the native library usable, once, before a test calls the facade.
-///
-/// In a linked build the facade is usable already and this is a no-op at
-/// comptime, so the branch is never analyzed. In a runtime-loading build every
-/// call into the module goes through a table that `load` fills, so this is
-/// where the one explicit load happens. It is safe to call from every test:
-/// the contract makes the same request idempotent, and the loader keeps the
-/// handle to the end of the process.
-///
-/// A build that was not told which file to load stops here with the variable's
-/// name, rather than reporting a test failure that says nothing about the
-/// reason.
+/// Loads the explicit provider in runtime-loading builds; linked builds need no load.
+/// An unset provider path stops with the variable name.
 fn nativeReady() void {
     if (comptime !s2.runtime_loaded) return;
     if (s2.loadedSource() != null) return;
@@ -235,10 +132,6 @@ fn missingProvider() noreturn {
     );
 }
 
-// ---------------------------------------------------------------------------
-// CellId: the token codec
-// ---------------------------------------------------------------------------
-
 test "published token/id pairs decode and encode exactly" {
     nativeReady();
     var lines = Lines{ .text = tokens_tsv };
@@ -249,10 +142,7 @@ test "published token/id pairs decode and encode exactly" {
         try testing.expectEqual(@as(usize, 2), fields(line, &parts));
 
         if (std.mem.eql(u8, parts[1], "1")) {
-            // A token the fixture says is malformed. The facade reports it as
-            // InvalidArgument rather than as the id 0: upstream answers a bad
-            // token with `S2CellId::None()` (`src/s2/s2cell_id.cc:249-250`) and
-            // a caller must not have to tell that from a real cell.
+            // Malformed tokens must not alias `none` (`src/s2/s2cell_id.cc:249-250`).
             try testing.expectError(error.InvalidArgument, s2.CellId.fromToken(parts[0]));
             rejected += 1;
             continue;
@@ -266,26 +156,15 @@ test "published token/id pairs decode and encode exactly" {
         const encoded = try decoded.toToken(&buf);
         try testing.expectEqualStrings(parts[0], encoded);
 
-        // The id in the fixture must also be a cell the library considers real:
-        // a table of ids that were all rejected would satisfy the two lines
-        // above while proving nothing.
         try testing.expect(decoded.isValid());
         accepted += 1;
     }
-    // The counts are asserted so a fixture that stopped being read cannot turn
-    // the loop above into a pass.
     try testing.expectEqual(@as(usize, 32), accepted);
     try testing.expectEqual(@as(usize, 5), rejected);
 }
 
 test "every face root has the token upstream's id layout implies" {
     nativeReady();
-    // The layout is `id = [face][face_pos]`: three face bits, a one-bit level
-    // marker, and the Hilbert position (`src/s2/s2cell_id.h:59-67`), and the
-    // codec prints the id in hex with trailing zeros removed
-    // (`src/s2/s2cell_id.cc:217-233`). For the six level-0 cells that leaves one
-    // hex digit each: 2*face + 1. golang/geo's published table confirms the
-    // first two rows ("1" and "3") as raw ids.
     const expected_tokens = [_][]const u8{ "1", "3", "5", "7", "9", "b" };
     for (expected_tokens, 0..) |token, face| {
         const id = try s2.CellId.fromFace(@intCast(face));
@@ -305,18 +184,13 @@ test "every face root has the token upstream's id layout implies" {
 
 test "a rejected token leaves the caller's output untouched" {
     nativeReady();
-    // The facade hides the output variable, so this asks the bridge the way the
-    // facade does and inspects the memory behind it. The return value is not
-    // compared here: what matters is that nothing was written, which is a
-    // property of the caller's buffer rather than of the status.
     const sentinel: u64 = 0xdead_beef_dead_beef;
     var out: u64 = sentinel;
     _ = s2.c.s2br_cell_from_token("nope!", 5, &out);
     try testing.expectEqual(sentinel, out);
 
     var too_long: u64 = sentinel;
-    // Seventeen hex digits: one past the codec's maximum
-    // (`src/s2/s2cell_id.cc:236`).
+    // Seventeen hex digits exceed upstream's token limit (`src/s2/s2cell_id.cc:236`).
     _ = s2.c.s2br_cell_from_token("0123456789abcdef0", 17, &too_long);
     try testing.expectEqual(sentinel, too_long);
 }
@@ -328,13 +202,11 @@ test "a token buffer one byte short is refused and left alone" {
     const token = try id.toToken(&full);
     try testing.expectEqual(@as(usize, 5), token.len);
 
-    // The token needs its NUL, so a buffer of exactly its length is too short.
     var short: [5]u8 = undefined;
     @memset(&short, 0xAA);
     try testing.expectError(error.BufferTooSmall, id.toToken(&short));
     try testing.expectEqual(@as(u8, 0xAA), short[0]);
 
-    // One byte more than the token, i.e. room for the NUL, is enough.
     var exact: [6]u8 = undefined;
     try testing.expectEqualStrings("89c25", try id.toToken(&exact));
 }
@@ -345,14 +217,11 @@ test "invalid cell ids are refused instead of answered with a number" {
     try testing.expect(!s2.CellId.sentinel.isValid());
     try testing.expect(!(s2.CellId{ .raw = 2 }).isValid());
 
-    // Upstream's own test uses faces 6 and 7 to build invalid ids
-    // (src/s2/s2cell_id_test.cc:335-336).
+    // Upstream uses face indices 6 and 7 for invalid ids (`src/s2/s2cell_id_test.cc:335-336`).
     try testing.expect(!(try s2.CellId.fromFace(6)).isValid());
     try testing.expect(!(try s2.CellId.fromFace(7)).isValid());
 
-    // Every accessor needing a real cell refuses an invalid one, because
-    // upstream has no defined answer for it: `level()` reads the lowest set bit
-    // (`src/s2/s2cell_id.h:596-601`) and id 0 has none.
+    // Invalid id 0 has no level, so accessors refuse it (`src/s2/s2cell_id.h:596-601`).
     try testing.expectError(error.InvalidArgument, s2.CellId.none.level());
     try testing.expectError(error.InvalidArgument, s2.CellId.none.face());
     try testing.expectError(error.InvalidArgument, s2.CellId.none.pos());
@@ -370,10 +239,6 @@ test "invalid cell ids are refused instead of answered with a number" {
     try testing.expectError(error.InvalidArgument, s2.CellId.none.intersects(s2.CellId.none));
     try testing.expectError(error.InvalidArgument, s2.Cell.init(s2.CellId.none).exactArea());
 }
-
-// ---------------------------------------------------------------------------
-// CellId: containment and the id range
-// ---------------------------------------------------------------------------
 
 test "published containment and intersection table" {
     nativeReady();
@@ -396,9 +261,7 @@ test "published containment and intersection table" {
 
 test "contains agrees with the inclusive id range it is defined by" {
     nativeReady();
-    // `contains` is `b >= a.range_min() and b <= a.range_max()`
-    // (`src/s2/s2cell_id.h:290-295`), so the two must agree everywhere, and
-    // children must partition their parent.
+    // The inclusive id range defines containment (`src/s2/s2cell_id.h:290-295`).
     const parent = try s2.CellId.fromDebugString("0/0333300");
     const parent_range = try parent.range();
     try testing.expect(parent_range[0].raw < parent_range[1].raw);
@@ -416,24 +279,13 @@ test "contains agrees with the inclusive id range it is defined by" {
         try testing.expect(kid_range[1].raw <= parent_range[1].raw);
     }
 
-    // Cells of one level are `lsb << 1` apart along the Hilbert curve --
-    // `next()` is `id_ + 2 * lsb` (`src/s2/s2cell_id.h:714-716`) -- and one
-    // cell's range is `id_ -/+ (lsb - 1)` (`:640-646`), so a cell's
-    // range_max and its successor's range_min are exactly two apart.  Two is
-    // a property of the layout, not of this cell: a leaf's lsb is 1, so its
-    // range is its own id, and leaf ids are odd because a level-30 cell's
-    // marker is bit 0 (`kPosBits = 2*kMaxLevel + 1`, `:101`), which is why
-    // valid leaves stride by two as well.
+    // Consecutive cells at one level differ by `2*lsb` (`src/s2/s2cell_id.h:714-716`).
     for (kids[1..], kids[0 .. kids.len - 1]) |next, prev| {
         const prev_range = try prev.range();
         const next_range = try next.range();
         try testing.expectEqual(prev_range[1].raw + 2, next_range[0].raw);
     }
 }
-
-// ---------------------------------------------------------------------------
-// CellId: leaf cells and coordinates
-// ---------------------------------------------------------------------------
 
 test "published leaf cell ids round trip with published coordinates" {
     nativeReady();
@@ -448,26 +300,20 @@ test "published leaf cell ids round trip with published coordinates" {
         const lng_deg = parseF64(parts[2]);
         const ll = s2.LatLng.fromDegrees(lat_deg, lng_deg);
 
-        // Forward: the leaf cell containing the published coordinate.
         const leaf = try s2.CellId.fromLatLng(ll);
         try testing.expectEqual(expected, leaf);
         try testing.expect(leaf.isLeaf());
 
-        // Backward: the published cell's centre is that coordinate, to the
-        // tolerance upstream's own inverse test allows
-        // (src/s2/s2cell_id_test.cc:302-315).
         const centre = try expected.toLatLng();
         try testing.expectApproxEqAbs(lat_deg, centre.lat_deg, 1e-8);
         try testing.expectApproxEqAbs(lng_deg, centre.lng_deg, 1e-8);
 
-        // The point form agrees with both.
         const as_point = try ll.toPoint();
         try testing.expectEqual(expected, try s2.CellId.fromPoint(as_point));
         const back = try as_point.toLatLng();
         try testing.expectApproxEqAbs(lat_deg, back.lat_deg, 1e-8);
         try testing.expectApproxEqAbs(lng_deg, back.lng_deg, 1e-8);
 
-        // And the cell really contains the point, in the region sense.
         try testing.expect(try s2.Cell.init(leaf).containsPoint(as_point));
         rows += 1;
     }
@@ -476,10 +322,7 @@ test "published leaf cell ids round trip with published coordinates" {
 
 test "the projection origin is on face 0 and its face cell is centred there" {
     nativeReady();
-    // src/python/s2geometry_test.py:486-487 builds the level-0 cell
-    // 0x1000000000000000 under the comment "Level-0 cell (i.e. face) centered at
-    // (0, 0)", and src/s2/s2cell_id_test.cc:90-95 requires the leaf cell of
-    // (0, 0) to be on face 0.
+    // Published origin-cell answers (`src/python/s2geometry_test.py:486-487`; `src/s2/s2cell_id_test.cc:90-95`).
     const origin = s2.LatLng.fromDegrees(0, 0);
     const leaf = try s2.CellId.fromLatLng(origin);
     try testing.expectEqual(@as(u8, 30), try leaf.level());
@@ -499,11 +342,7 @@ test "the projection origin is on face 0 and its face cell is centred there" {
 
 test "the three positive axes land on the three faces the cube names for them" {
     nativeReady();
-    // A point's face is the one whose axis its largest component follows
-    // (`src/s2/s2coords.cc:29-41`), and src/python/s2geometry_test.py:486-487
-    // calls face 0 the face centred at (0, 0) -- the +X face. The same scheme
-    // fixes +Y on face 1 and +Z on face 2, each checked here against the face
-    // cell that must contain the leaf cell.
+    // Cube face follows the axis with the largest component (`src/s2/s2coords.cc:29-41`).
     const cases = [_]struct { point: [3]f64, face: u8 }{
         .{ .point = .{ 1, 0, 0 }, .face = 0 },
         .{ .point = .{ 0, 1, 0 }, .face = 1 },
@@ -517,17 +356,12 @@ test "the three positive axes land on the three faces the cube names for them" {
         const face_cell = try s2.CellId.fromFace(case.face);
         try testing.expect(try face_cell.contains(leaf));
         try testing.expect(try s2.Cell.init(face_cell).containsPoint(point));
-        // The face cell is centred on the axis point itself.
         const face_centre = try face_cell.toPoint();
         try testing.expectApproxEqAbs(point.x, face_centre.x, 1e-15);
         try testing.expectApproxEqAbs(point.y, face_centre.y, 1e-15);
         try testing.expectApproxEqAbs(point.z, face_centre.z, 1e-15);
     }
 }
-
-// ---------------------------------------------------------------------------
-// CellId: parent, child, siblings
-// ---------------------------------------------------------------------------
 
 test "published parent and child positions" {
     nativeReady();
@@ -583,27 +417,22 @@ test "a parent has exactly four children and they partition it" {
     try testing.expectEqual(@as(usize, 4), from_iteration.len);
     try testing.expectEqual(@as(usize, 4), try parent.childrenCount(level));
 
-    // `child(position)` and the child iteration order must agree.
     std.mem.sort(s2.CellId, from_iteration, {}, cellIdLessThan);
     std.mem.sort(s2.CellId, &kids, {}, cellIdLessThan);
     for (from_iteration, kids) |a, b| {
         try testing.expectEqual(b.raw, a.raw);
     }
 
-    // A level at or below the cell's own has no descendants to list, which is
-    // upstream's precondition for the iterator range
-    // (`src/s2/s2cell_id.h:344-347`).
+    // Descendant targets must exceed this cell's level (`src/s2/s2cell_id.h:344-347`).
     try testing.expectError(error.InvalidArgument, parent.children(level - 2, &buf));
     try testing.expectError(error.InvalidArgument, parent.childrenCount(level - 2));
     try testing.expectError(error.InvalidArgument, parent.children(31, &buf));
 
-    // A buffer one short must be refused without writing past its end.
     var too_small: [3]s2.CellId = undefined;
     for (&too_small) |*slot| slot.* = .{ .raw = 0xEE };
     try testing.expectError(error.BufferTooSmall, parent.children(level, &too_small));
     try testing.expectEqual(@as(u64, 0xEE), too_small[2].raw);
 
-    // A leaf has no child at all.
     const leaf = try s2.CellId.fromLatLng(.{ .lat_deg = 1, .lng_deg = 2 });
     try testing.expect(leaf.isLeaf());
     try testing.expectError(error.InvalidArgument, leaf.child(0));
@@ -611,39 +440,20 @@ test "a parent has exactly four children and they partition it" {
 
 test "a face cell reports its leaf-cell count without building any of them" {
     nativeReady();
-    // A face cell is at level 0, so every leaf cell on its face is one of its
-    // descendants at level 30, and there are 4^30 = 2^60 of them.  No buffer
-    // holds 2^60 ids and no walk reaches the end of them, so a count is the
-    // only answer that can exist, and it has to be arithmetic: upstream's own
-    // `child_begin(level)` and `child_end(level)` are the ends of a run of
-    // `next()` steps (`src/s2/s2cell_id.h:344-347`) and `distance_from_begin`
-    // is upstream's own count of those steps from the first cell of the level
-    // (`src/s2/s2cell_id.h:360-363`), so the difference of the two endpoints
-    // is the length of the range.  The test above pins the same agreement
-    // between count and walk at four cells; this is the far end of it.
+    // A face has 4^30 = 2^60 descendants; count them without walking (`src/s2/s2cell_id.h:344-347,360-363`).
+    // On 32-bit targets this count must return `InvalidArgument`, not wrap.
     const leaf_count: u64 = @as(u64, 1) << 60;
     var one_cell: [1]s2.CellId = undefined;
 
-    // Face 5 is the boundary rather than an exception.  Its end of the range is
-    // `S2CellId::End(30)`, which is `FromFace(5).child_end(30)`
-    // (`src/s2/s2cell_id.h:741-743`) and is one past the last cell of the
-    // level rather than a cell of its own; `distance_from_begin` documents
-    // that it may be called for exactly that id, which is what makes counting
-    // the last face the same arithmetic as counting the first.
+    // Face 5's range ends at `End(30)`, one past the last leaf (`src/s2/s2cell_id.h:741-743`).
     for ([_]u8{ 0, 5 }) |face_index| {
         const face = try s2.CellId.fromFace(face_index);
         if (leaf_count > std.math.maxInt(usize)) {
-            // A 32-bit `usize` cannot count 2^60, and the answer there is a
-            // refusal: a wrapped count would be a length the caller was told
-            // to size a buffer from.
+            // Counts wider than `usize` return `InvalidArgument`, not a wrapped value.
             try testing.expectError(error.InvalidArgument, face.childrenCount(30));
             try testing.expectError(error.InvalidArgument, face.children(30, &one_cell));
         } else {
             try testing.expectEqual(leaf_count, @as(u64, @intCast(try face.childrenCount(30))));
-            // A buffer that cannot hold the range is refused before the walk
-            // starts, and those bytes are the caller's: nothing may be written
-            // into them, and the count left behind is what the caller needs to
-            // come back with a buffer that does fit.
             var buf: [4]s2.CellId = undefined;
             for (&buf) |*slot| slot.* = s2.CellId.sentinel;
             try testing.expectError(error.BufferTooSmall, face.children(30, &buf));
@@ -651,10 +461,7 @@ test "a face cell reports its leaf-cell count without building any of them" {
         }
     }
 
-    // A count at a size that can be walked has to agree with the walk, cell for
-    // cell: three levels below a level-8 cell is 4^3 = 64 of them, and
-    // consecutive entries are consecutive `next()` steps because that is the
-    // iterator convention upstream documents for this range.
+    // Three levels below a cell yields 4^3 = 64 descendants.
     const cell = try s2.CellId.fromFacePosLevel(3, 0x0abc, 8);
     var deep: [64]s2.CellId = undefined;
     const walked = try cell.children(11, &deep);
@@ -666,9 +473,6 @@ test "a face cell reports its leaf-cell count without building any of them" {
         if (i > 0) try testing.expectEqual((try walked[i - 1].next()).raw, kid.raw);
     }
 
-    // Both ends of the range contract: a cell at its own level has only itself
-    // as a descendant, and so has a leaf cell asked for level 30, the finest
-    // level there is.
     try testing.expectEqual(@as(usize, 1), try cell.childrenCount(8));
     try testing.expectEqual(cell.raw, (try cell.children(8, &one_cell))[0].raw);
     const leaf = try s2.CellId.fromLatLng(.{ .lat_deg = 1, .lng_deg = 2 });
@@ -691,18 +495,12 @@ test "next and prev walk the id space and stop at the ends" {
     try testing.expectEqual(cell.raw, (try next.prev()).raw);
     try testing.expectEqual(cell.raw, (try prev.next()).raw);
 
-    // They do not wrap (`src/s2/s2cell_id.h:351-355`): past the ends upstream
-    // returns an id that is not a cell, which the facade reports as such rather
-    // than as a successful id.
+    // `next()` and `prev()` do not wrap (`src/s2/s2cell_id.h:351-355`).
     const first = try s2.CellId.fromFace(0);
     try testing.expect(!(try first.prev()).isValid());
     const last = try s2.CellId.fromFace(5);
     try testing.expect(!(try last.next()).isValid());
 }
-
-// ---------------------------------------------------------------------------
-// CellId: neighbours
-// ---------------------------------------------------------------------------
 
 test "published edge, all-neighbour and vertex-neighbour answers" {
     nativeReady();
@@ -717,9 +515,7 @@ test "published edge, all-neighbour and vertex-neighbour answers" {
 
         if (std.mem.eql(u8, parts[0], "edgeface")) {
             try testing.expectEqual(@as(usize, 3), count);
-            // The one published row: the edge neighbours of the level-0 cell for
-            // face 1 are the level-0 cells for these four faces, in this order
-            // (src/s2/s2cell_id_test.cc:572-580).
+            // Published face-1 neighbors (`src/s2/s2cell_id_test.cc:572-580`).
             const face: u8 = @intCast(parseU64(parts[1]));
             const neighbors = try (try s2.CellId.fromFace(face)).edgeNeighbors();
             var it = std.mem.splitScalar(u8, parts[2], ',');
@@ -746,9 +542,7 @@ test "published edge, all-neighbour and vertex-neighbour answers" {
             while (it.next()) |text| : (expected_len += 1) {
                 expected[expected_len] = try s2.CellId.fromDebugString(text);
             }
-            // Upstream compares with UnorderedElementsAre, so this is a
-            // multiset comparison: a repeat in the fixture is a repeat upstream
-            // expects, and the corner-cell row really does contain 2/3333 twice.
+            // Compare as a multiset because upstream may repeat corner neighbors.
             try expectSameCellMultiset(got, expected[0..expected_len]);
             all_rows += 1;
         } else if (std.mem.eql(u8, parts[0], "cornervertex")) {
@@ -763,7 +557,7 @@ test "published edge, all-neighbour and vertex-neighbour answers" {
             try testing.expectEqual(@as(usize, 3), got.len);
             try testing.expectEqual(try cell.vertexNeighborsCount(0), got.len);
 
-            // Upstream sorts before comparing (src/s2/s2cell_id_test.cc:637-641).
+            // Upstream sorts this fixture before comparison (`src/s2/s2cell_id_test.cc:637-641`).
             std.mem.sort(s2.CellId, got, {}, cellIdLessThan);
 
             var it = std.mem.splitScalar(u8, parts[4], ',');
@@ -784,10 +578,7 @@ test "published edge, all-neighbour and vertex-neighbour answers" {
 
 test "neighbour level bounds are refused rather than clamped" {
     nativeReady();
-    // `AppendAllNeighbors` requires `nbr_level >= level()`
-    // (`src/s2/s2cell_id.cc:558`) and `GetSizeIJ` checks
-    // `0 <= level <= kMaxLevel` (`src/s2/s2cell_id.h:611-614`), so the legal
-    // range for the parameter is this cell's own level .. 30 inclusive.
+    // All-neighbor levels span [cell.level(), max_level] (`src/s2/s2cell_id.cc:558`; `s2/s2cell_id.h:611-614`).
     const cell = try s2.CellId.fromDebugString("2/033020001100");
     const level = try cell.level();
     try testing.expect(level > 0);
@@ -796,13 +587,11 @@ test "neighbour level bounds are refused rather than clamped" {
     try testing.expectError(error.InvalidArgument, cell.allNeighbors(level - 1, &buf));
     try testing.expectError(error.InvalidArgument, cell.allNeighbors(31, &buf));
 
-    // Vertex neighbours need a level strictly below this cell's own
-    // (src/s2/s2cell_id.cc:516-518).
+    // Vertex-neighbor level must be below this cell (`src/s2/s2cell_id.cc:516-518`).
     try testing.expectError(error.InvalidArgument, cell.vertexNeighbors(level, &buf));
     try testing.expect(level < 30);
 
-    // Edge neighbours always exist, are always four, and are all distinct
-    // (`src/s2/s2cell_id.h:455-459`).
+    // Edge neighbors are four distinct cells (`src/s2/s2cell_id.h:455-459`).
     const edges = try cell.edgeNeighbors();
     for (edges, 0..) |edge, i| {
         try testing.expectEqual(level, try edge.level());
@@ -812,8 +601,6 @@ test "neighbour level bounds are refused rather than clamped" {
         }
     }
 
-    // Vertex neighbours at a legal level: three or four of them, the count the
-    // bridge reports matching the count it writes.
     const count = try cell.vertexNeighborsCount(level - 1);
     try testing.expect(count == 3 or count == 4);
     const vertex = try cell.vertexNeighbors(level - 1, &buf);
@@ -825,53 +612,15 @@ test "neighbour level bounds are refused rather than clamped" {
 
 test "a leaf cell accepts level 30 as its neighbour level" {
     nativeReady();
-    // kMaxLevel is a legal neighbour level, and it is the top of the range
-    // rather than one past it: `GetSizeIJ(kMaxLevel)` is 1
-    // (`src/s2/s2cell_id.h:611-614`), which is exactly what the
-    // `nbr_size <= size` check in `AppendAllNeighbors` asks for
-    // (`src/s2/s2cell_id.cc:569-570`).  `GetSizeIJ`'s own `ABSL_DCHECK` stops
-    // at kMaxLevel (`src/s2/s2cell_id.h:612`), and the `level < kMaxLevel`
-    // bound that appears upstream (`src/s2/s2cell_id_test.cc:551`) belongs to
-    // the test helper, which then calls `child_begin(level + 1)` and so needs
-    // one level of headroom that `AppendAllNeighbors` itself does not.
-    //
-    // The cell is the one upstream names in `TEST(S2CellId, Neighbors)`
-    // (`src/s2/s2cell_id_test.cc:610-617`): `FromFacePosLevel(0, 0, kMaxLevel)`,
-    // "the corner of faces 0, 4, and 5".  `FromFacePosLevel(0, 0, level)` is
-    // `S2CellId(1).parent(level)` (`src/s2/s2cell_id.h:547-551`), which is the
-    // face-0 leaf at (i, j) = (0, 0) -- `FromFaceIJ(0, 0, 0)`, whose Hilbert
-    // position is zero -- so it sits on the cube vertex where faces 0, 4 and 5
-    // meet.  Two consequences follow, and the pinned header states both: a
-    // neighbour that leaves the face has to be projected onto an adjacent one,
-    // and "for cells adjacent to a face vertex, the same neighbor may be
-    // appended more than once" (`src/s2/s2cell_id.h:470-474`).  Only the *edge*
-    // neighbours are promised to be distinct (`src/s2/s2cell_id.h:456-458`),
-    // so the answer below is pinned as a multiset with its repeat, not a set.
+    // Level-30 corner neighbors cross cube faces and may duplicate (`src/s2/s2cell_id_test.cc:610-617`).
     const leaf = try s2.CellId.fromFacePosLevel(0, 0, s2.max_level);
     try testing.expectEqual(s2.max_level, try leaf.level());
 
-    // `kMaxSize - 1`, the largest valid leaf index (`src/s2/s2coords.h:133-135`).
+    // Largest leaf-grid index (`src/s2/s2coords.h:133-135`).
     const ij_max: u32 = (@as(u32, 1) << s2.max_level) - 1;
 
-    // With size == nbr_size == 1 the loop body runs for k in {-1, 0, 1}
-    // (`src/s2/s2cell_id.cc:574-597`): two appends for k < 0, four for the
-    // middle k, two more for k >= size, then it breaks.  Eight cells, and the
-    // two-pass bridge has to report the same number it writes.
-    //
-    // The eight cells themselves, read off those three iterations for
-    // (i, j) = (0, 0) and then off the projections `FromFaceIJWrap` performs
-    // (`src/s2/s2cell_id.cc:458-489`, with `FaceUVtoXYZ` and
-    // `ValidFaceXYZtoUV` at `src/s2/s2coords.h:368-383` and `:389-403`): a
-    // wrap past u == -1 lands on face 4 and one past v == -1 on face 5,
-    // because x is exactly 1 on face 0 and the clamped coordinate is
-    // 1 + DBL_EPSILON, and the tie between the two in `LargestAbsComponent`
-    // (`src/s2/util/math/vector.h:507-513`) goes to the z component, so the
-    // corner wrap lands on face 5 as well.
-    //
-    // The face-5 leaf at (0, ij_max) is listed twice on purpose: the wrap of
-    // the (i-1, j-1) corner and the wrap of the (i, j-1) neighbour both land on
-    // it.  That is the repeat the header allows, and asserting distinctness
-    // here would be asserting something the pinned source declines to promise.
+    // Upstream wraps corner neighbors across cube faces and may append the face-5 leaf twice.
+    // Preserve the duplicate in the expected multiset (`src/s2/s2cell_id.h:470-474`).
     const expected_leaf = [_][3]u32{
         .{ 0, 0, 1 },
         .{ 0, 1, 0 },
@@ -896,10 +645,7 @@ test "a leaf cell accepts level 30 as its neighbour level" {
     }
     try expectSameCellMultiset(neighbors, &want_leaf);
 
-    // Four of the eight are known independently of that list: the edge
-    // neighbours are documented to be exactly four distinct cells of the
-    // cell's own level (`src/s2/s2cell_id.h:455-459`), computed by a different
-    // loop in a different place (`src/s2/s2cell_id.cc:499-511`).
+    // Edge neighbors are four distinct cells from a separate upstream algorithm (`src/s2/s2cell_id.h:455-459`; `s2/s2cell_id.cc:499-511`).
     const edges = try leaf.edgeNeighbors();
     for (edges) |edge| {
         try testing.expectEqual(s2.max_level, try edge.level());
@@ -910,10 +656,7 @@ test "a leaf cell accepts level 30 as its neighbour level" {
         try testing.expect(found);
     }
 
-    // Upstream publishes those four edge neighbours by hand for the corner
-    // cell of every level (`src/s2/s2cell_id_test.cc:582-596`), and kMaxLevel
-    // is one of the levels it walks, so the same answer is available here for
-    // the face-1 corner leaf, in the edge order down, right, up, left.
+    // Published edge neighbors for the face-1 corner (`src/s2/s2cell_id_test.cc:582-596`).
     const face1_corner = try s2.CellId.fromFaceIJ(1, 0, 0);
     const face1_edges = try face1_corner.edgeNeighbors();
     const published_face1_edges = [_]s2.CellId{
@@ -927,9 +670,6 @@ test "a leaf cell accepts level 30 as its neighbour level" {
         try testing.expectEqual(want.raw, face1_edges[i].raw);
     }
 
-    // One level down the same parameter still fits: size is 2 and nbr_size is
-    // 1, so k also reaches 2 and the count is 2 + 4 + 4 + 2.  The corner is
-    // the same cube vertex, so the same face-5 leaf is appended twice again.
     const expected_parent = [_][3]u32{
         .{ 0, 0, 2 },
         .{ 0, 1, 2 },
@@ -960,16 +700,8 @@ test "a leaf cell accepts level 30 as its neighbour level" {
     try expectSameCellMultiset(up, &want_parent);
 }
 
-// ---------------------------------------------------------------------------
-// Cell geometry and area
-// ---------------------------------------------------------------------------
-
 test "the six faces partition the sphere exactly" {
     nativeReady();
-    // The cube's faces tile the unit sphere without overlap, so their exact
-    // areas sum to the sphere's area, 4*pi. `S2Cell::ExactArea` is the method
-    // upstream documents as accurate to six digits even for a leaf cell
-    // (`src/s2/s2cell.h:233-237`).
     var total: f64 = 0;
     for (0..6) |face| {
         const id = try s2.CellId.fromFace(@intCast(face));
@@ -991,23 +723,11 @@ test "children tile their parent and the approximation stays within its bound" {
     }
     try testing.expectApproxEqRel(exact, children_total, 1e-12);
 
-    // The approximation is documented within 3% overall and 0.1% from level 5
-    // on (`src/s2/s2cell.h:227-232`); this cell is at level 6.
+    // Upstream approximation error is at most 0.1% from level 5 (`src/s2/s2cell.h:227-232`).
     const approx = try s2.Cell.init(cell).approxArea();
     try testing.expectApproxEqRel(exact, approx, 1e-3);
 
-    // Cells at one level are not congruent, and nothing here should pretend
-    // they are: the cube projection stretches the ones near a face's corners
-    // and shrinks the ones near its centre, which is why upstream publishes
-    // this as `S2Cell::AverageArea` -- a per-level *average*, documented as
-    // accurate only to within a factor of 1.7 rather than as a per-cell
-    // value (`src/s2/s2cell.h:220-226`).  Comparing one cell's exact area
-    // against it measures which part of a face that cell sits in.
-    //
-    // The average itself is exact: `S2::kAvgArea` is `4*pi/6`
-    // (`src/s2/s2metrics.cc:114`) and `Metric::GetValue` scales by
-    // `2^(-2*level)` (`src/s2/s2metrics.h:53`), so the average over the
-    // 6 * 4^6 cells of level 6 multiplies back to the sphere's 4*pi.
+    // Average area uses upstream's `kAvgArea` metric (`src/s2/s2metrics.cc:114`; `s2/s2metrics.h:53`).
     const average = try s2.Cell.averageAreaAtLevel(6);
     try testing.expectApproxEqRel(
         4 * std.math.pi,
@@ -1019,8 +739,7 @@ test "children tile their parent and the approximation stays within its bound" {
 
 test "a face cell spans the whole (u,v) square and has four distinct corners" {
     nativeReady();
-    // golang/geo publishes `ijLevelToBoundUV(0, 0, 0)` as the whole square
-    // [-1, 1] x [-1, 1] in its TestIJLevelToBoundUV table (s2/cellid_test.go).
+    // Published whole-face UV bounds (`golang/geo s2/cellid_test.go`, `TestIJLevelToBoundUV`).
     const face = try s2.CellId.fromFace(0);
     const uv = try s2.Cell.init(face).boundUV();
     try testing.expectApproxEqAbs(@as(f64, -1), uv.u_lo, 1e-15);
@@ -1028,8 +747,6 @@ test "a face cell spans the whole (u,v) square and has four distinct corners" {
     try testing.expectApproxEqAbs(@as(f64, -1), uv.v_lo, 1e-15);
     try testing.expectApproxEqAbs(@as(f64, 1), uv.v_hi, 1e-15);
 
-    // The same bounds through the id, which is the primitive the cell form
-    // delegates to (`src/s2/s2cell.h:240`).
     const id_uv = try face.boundUV();
     try testing.expectEqual(uv.u_lo, id_uv.u_lo);
     try testing.expectEqual(uv.v_hi, id_uv.v_hi);
@@ -1052,17 +769,11 @@ test "a face cell spans the whole (u,v) square and has four distinct corners" {
 
     try testing.expectError(error.InvalidArgument, s2.Cell.init(face).vertex(4));
 
-    // A finer cell's (u,v) span is smaller than its ancestor's, and its size in
-    // (s,t) space is smaller too (`src/s2/s2cell_id.h:188-192`).
     const finer = try s2.CellId.fromFacePosLevel(0, 0, 4);
     const finer_uv = try s2.Cell.init(finer).boundUV();
     try testing.expect(finer_uv.u_hi - finer_uv.u_lo < uv.u_hi - uv.u_lo);
     try testing.expect(try finer.sizeSt() < try face.sizeSt());
 }
-
-// ---------------------------------------------------------------------------
-// LatLng, Point, Cap, LatLngRect
-// ---------------------------------------------------------------------------
 
 test "published normalization answers for the poles and the antimeridian" {
     nativeReady();
@@ -1079,9 +790,6 @@ test "published normalization answers for the poles and the antimeridian" {
             try testing.expectApproxEqAbs(parseF64(parts[3]), normalized.lat_deg, 1e-9);
             try testing.expectApproxEqAbs(parseF64(parts[4]), normalized.lng_deg, 1e-9);
 
-            // Normalization is idempotent and its result is valid, which is what
-            // makes it a projection onto the valid range rather than a clamp of
-            // one coordinate only.
             const again = try normalized.normalized();
             try testing.expectEqual(normalized.lat_deg, again.lat_deg);
             try testing.expectEqual(normalized.lng_deg, again.lng_deg);
@@ -1104,8 +812,6 @@ test "published normalization answers for the poles and the antimeridian" {
             const ll = s2.LatLng.fromDegrees(lat, lng);
             try testing.expectEqual(parts[3][0] == '1', ll.isValid());
 
-            // A non-finite coordinate cannot be normalized or turned into a
-            // point, and the facade says so instead of returning a number.
             if (!std.math.isFinite(lat) or !std.math.isFinite(lng)) {
                 try testing.expectError(error.InvalidArgument, ll.normalized());
                 try testing.expectError(error.InvalidArgument, ll.toPoint());
@@ -1123,8 +829,7 @@ test "published polar closure answers" {
     var lines = Lines{ .text = polar_tsv };
     var rows: usize = 0;
     while (lines.next()) |line| {
-        // Two tab-separated groups: the input rectangle as four
-        // space-separated numbers and either the expected rectangle or `full`.
+        // Each row contains four input bounds and an expected closure or `full`.
         var groups: [2][]const u8 = undefined;
         try testing.expectEqual(@as(usize, 2), fields(line, &groups));
 
@@ -1133,9 +838,7 @@ test "published polar closure answers" {
             var it = std.mem.tokenizeScalar(u8, groups[0], ' ');
             for (&in) |*value| value.* = parseF64(it.next().?);
         }
-        // The fixture's input order is lat_lo lat_hi lng_lo lng_hi, which is how
-        // `RectFromDegrees` upstream takes it; the facade's constructor takes
-        // the fields in the order a rectangle is written on the sphere.
+        // Fixture order is `lat_lo, lat_hi, lng_lo, lng_hi`; the facade takes lower then upper pairs.
         const rect = s2.LatLngRect.fromBounds(in[0], in[2], in[1], in[3]);
         const closed = try rect.polarClosure();
 
@@ -1161,43 +864,23 @@ test "published polar closure answers" {
 
 test "an antimeridian rectangle reports itself inverted and still holds its points" {
     nativeReady();
-    // src/s2/s2latlng_rect_test.cc:181-198 builds r1 from (0, -180) to
-    // (90, 0) and requires (30, -45) inside and (30, 45) outside.
-    //
-    // That rectangle is reported as inverted, which is what this test's own
-    // name claims and what the stored interval forces.  The longitude half of
-    // it is an S1Interval, and the two-argument constructor moves a -pi
-    // endpoint to +pi before storing it (`src/s2/s1interval.h:229-232`), so
-    // the interval upstream wrote as (-pi, 0) is held as (pi, 0), and
-    // `is_inverted` is only `lng_.lo() > lng_.hi()`
-    // (`src/s2/s2latlng_rect.h:143-145`).  That is a second spelling of the
-    // same 180 degrees of longitude -- the half that straddles the date line
-    // -- and not a second region.  The containment and the area below are
-    // what shows it: both are computed from the stored interval and do not
-    // care which way round its endpoints were written.
+    // The -180° endpoint is stored as +180°, so this interval crosses the date line (`src/s2/s1interval.h:229-232`; `s2/s2latlng_rect.h:143-145`).
+    // Its area and containment tests distinguish the region from its complement.
     const r1 = s2.LatLngRect.fromBounds(0, -180, 90, 0);
     try testing.expect(try r1.isValid());
     try testing.expect(try r1.isInverted());
     try testing.expect(try r1.containsLatLng(.{ .lat_deg = 30, .lng_deg = -45 }));
     try testing.expect(!try r1.containsLatLng(.{ .lat_deg = 30, .lng_deg = 45 }));
-    // The fixture's other two cases are the rectangle's own corners
-    // (s2latlng_rect_test.cc:191-194): -180 degrees survives as the stored
-    // +180 bound, and the north pole is the latitude bound.
+    // Published rectangle corner cases (`src/s2/s2latlng_rect_test.cc:191-194`).
     try testing.expect(try r1.containsLatLng(.{ .lat_deg = 0, .lng_deg = -180 }));
     try testing.expect(try r1.containsLatLng(.{ .lat_deg = 90, .lng_deg = 0 }));
-    // Area is `lng().GetLength() * (sin(lat_hi) - sin(lat_lo))`
-    // (`src/s2/s2latlng_rect.cc:94-99`): half the longitudes, pi radians of
-    // them, and the two sines are 1 and 0, so this is a quarter of the
-    // sphere, 4*pi/4 = pi.
+    // Rectangle area is longitude length times the sine difference (`src/s2/s2latlng_rect.cc:94-99`).
     try testing.expectApproxEqRel(std.math.pi, try r1.area(), 1e-12);
 
-    // A rectangle whose longitude bounds run the wrong way is legal and crosses
-    // the 180 degree line (`src/s2/s2latlng_rect.h:145`).
+    // Inverted longitude bounds are legal and cross the date line (`src/s2/s2latlng_rect.h:145`).
     const crossing = s2.LatLngRect.fromBounds(0, 170, 10, -170);
     try testing.expect(try crossing.isValid());
     try testing.expect(try crossing.isInverted());
-    // Its strip is 20 degrees of longitude wide and wraps the date line, so it
-    // is exactly the two ordinary rectangles either side of it, added.
     try testing.expectApproxEqRel(
         (try s2.LatLngRect.fromBounds(0, 170, 10, 180).area()) +
             (try s2.LatLngRect.fromBounds(0, -180, 10, -170).area()),
@@ -1205,42 +888,30 @@ test "an antimeridian rectangle reports itself inverted and still holds its poin
         1e-9,
     );
 
-    // Latitude bounds outside the sphere make a rectangle invalid, and the
-    // facade reports that rather than clamping.
     const bad = s2.LatLngRect.fromBounds(-100, 0, 100, 10);
     try testing.expect(!try bad.isValid());
 }
 
 test "a cap's area is its height and its complement covers the rest of the sphere" {
     nativeReady();
-    // `S2Cap::GetArea` is `2*pi*height` (`src/s2/s2cap.cc:48-50`), so these two
-    // accessors are related by construction rather than independently.
+    // Upstream defines cap area as `2*pi*height` (`src/s2/s2cap.cc:48-50`).
     const cap = s2.Cap{ .center = .{ .lat_deg = 10, .lng_deg = 20 }, .radius_deg = 30 };
     const area = try cap.area();
     const height = try cap.height();
     try testing.expectApproxEqRel(2 * std.math.pi * height, area, 1e-12);
 
-    // A radius of 90 degrees is exactly a hemisphere.
     const hemisphere = s2.Cap{ .center = .{ .lat_deg = 0, .lng_deg = 0 }, .radius_deg = 90 };
     try testing.expectApproxEqRel(2 * std.math.pi, try hemisphere.area(), 1e-12);
     try testing.expectApproxEqAbs(@as(f64, 1), try hemisphere.height(), 1e-12);
 
-    // The complement's area is the rest of the sphere and its centre is the
-    // antipode (`src/s2/s2cap.cc:65-71`).
+    // The complement's centre is the antipode (`src/s2/s2cap.cc:65-71`).
     const complement = try cap.complement();
     try testing.expectApproxEqRel(@as(f64, 150), complement.radius_deg, 1e-9);
     try testing.expectApproxEqAbs(@as(f64, -10), complement.center.lat_deg, 1e-9);
     try testing.expectApproxEqAbs(@as(f64, -160), complement.center.lng_deg, 1e-9);
     try testing.expectApproxEqRel(4 * std.math.pi - area, try complement.area(), 1e-12);
 
-    // Containment, a degree clear of the rim in both directions.  `Contains`
-    // compares an `S1ChordAngle` between the centre and the point with the
-    // cap's radius (`src/s2/s2cap.cc:296-299`), so a point whose
-    // great-circle distance is exactly the radius is decided by three
-    // separately rounded doubles -- the centre, the point and the chord
-    // angle -- and which way a tie lands is not this test's to decide.  The
-    // two points here are a full degree clear instead: (39, 20) is 29
-    // degrees from (10, 20) against a 30 degree radius, and (-60, 20) is 70.
+    // Use points clear of the rim to avoid rounded boundary ties (`src/s2/s2cap.cc:296-299`).
     const centre = try cap.center.toPoint();
     try testing.expect(try cap.containsPoint(centre));
     const inside = try s2.LatLng.fromDegrees(39, 20).toPoint();
@@ -1248,18 +919,12 @@ test "a cap's area is its height and its complement covers the rest of the spher
     const outside = try s2.LatLng.fromDegrees(-60, 20).toPoint();
     try testing.expect(!try cap.containsPoint(outside));
 
-    // A cap of zero radius contains exactly its centre, and a cap of negative
-    // radius is empty -- upstream's own rule (`src/s2/s2cap.h:70-80`).
+    // Upstream treats zero/negative radii as empty (`src/s2/s2cap.h:70-80`).
     const point_cap = s2.Cap{ .center = .{ .lat_deg = 5, .lng_deg = 6 }, .radius_deg = 0 };
     try testing.expectApproxEqAbs(@as(f64, 0), try point_cap.area(), 1e-15);
     try testing.expect(try point_cap.containsPoint(try point_cap.center.toPoint()));
 
-    // `S2Cap::Contains` REQUIRES a unit-length vector and only debug-asserts
-    // it (`src/s2/s2cap.cc:296-300`), so a vector that is not a direction is
-    // refused here instead of aborting a Debug build or answering from input
-    // upstream never defined. The scaled copy of a point that is inside the
-    // cap points in exactly the same direction, so the refusal is a statement
-    // about the input rather than about the geometry.
+    // Upstream only debug-asserts unit vectors; reject scaled directions before that check (`src/s2/s2cap.cc:296-300`).
     try testing.expectError(
         error.InvalidArgument,
         cap.containsPoint(.{ .x = centre.x * 5, .y = centre.y * 5, .z = centre.z * 5 }),
@@ -1276,9 +941,7 @@ test "a cap's area is its height and its complement covers the rest of the spher
 
 test "two coordinates have the great-circle distance upstream publishes" {
     nativeReady();
-    // golang/geo's TestLatLngDistance table (s2/latlng_test.go, itself based on
-    // the C++ S2LatLng distance test) gives these in degrees with stated
-    // tolerances.
+    // Distance answers and tolerances come from golang/geo's `TestLatLngDistance` table.
     const cases = [_]struct { a: s2.LatLng, b: s2.LatLng, want: f64, tol: f64 }{
         .{ .a = .{ .lat_deg = 0, .lng_deg = 0 }, .b = .{ .lat_deg = 45, .lng_deg = 0 }, .want = 45, .tol = 1e-12 },
         .{ .a = .{ .lat_deg = -37, .lng_deg = 25 }, .b = .{ .lat_deg = -66, .lng_deg = -155 }, .want = 77, .tol = 1e-9 },
@@ -1289,7 +952,6 @@ test "two coordinates have the great-circle distance upstream publishes" {
         try testing.expectApproxEqAbs(case.want, try case.b.distanceDeg(case.a), case.tol);
     }
 
-    // The radian constructor and the degree constructor describe the same angle.
     const quarter = s2.LatLng.fromRadians(std.math.pi / 4.0, 0);
     try testing.expectApproxEqAbs(@as(f64, 45), quarter.lat_deg, 1e-12);
     try testing.expectApproxEqAbs(@as(f64, 0), quarter.lng_deg, 1e-12);
@@ -1302,25 +964,14 @@ test "point normalization preserves direction and yields unit length" {
         scaled.x * scaled.x + scaled.y * scaled.y + scaled.z * scaled.z,
     );
     try testing.expectApproxEqAbs(@as(f64, 1), length, 1e-15);
-    // 3-4-12 is a Pythagorean quadruple with hypotenuse 13, so each component is
-    // exactly its integer over 13.
     try testing.expectApproxEqAbs(@as(f64, 3.0 / 13.0), scaled.x, 1e-15);
     try testing.expectApproxEqAbs(@as(f64, 4.0 / 13.0), scaled.y, 1e-15);
     try testing.expectApproxEqAbs(@as(f64, 12.0 / 13.0), scaled.z, 1e-15);
 }
 
-// ---------------------------------------------------------------------------
-// Loop
-// ---------------------------------------------------------------------------
-
 test "an octant triangle has exactly pi/2 steradians" {
     nativeReady();
-    // The spherical triangle through the three positive coordinate axes is one
-    // octant: its three angles are each pi/2, so by the spherical-excess formula
-    // its area is 3*(pi/2) - pi = pi/2, and eight of them tile the sphere's
-    // 4*pi. Upstream uses exactly these three points as its octant fixture
-    // (src/s2/s2loop_measures_test.cc:238-241, which asserts the perimeter is
-    // 3*pi/2).
+    // The positive-axis octant has area pi/2 and perimeter 3*pi/2 (`src/s2/s2loop_measures_test.cc:238-241`).
     var loop = try s2.Loop.init(&[_][3]f64{
         .{ 1, 0, 0 },
         .{ 0, 1, 0 },
@@ -1337,14 +988,11 @@ test "an octant triangle has exactly pi/2 steradians" {
     try testing.expectApproxEqRel(std.math.pi / 2.0, try loop.signedArea(), 1e-12);
     try testing.expectApproxEqRel(3 * std.math.pi / 2.0, try loop.perimeterRad(), 1e-12);
 
-    // Containment: the middle of the octant is inside; its mirror in -y is not,
-    // because the interior is on the left of the chain (1,0,0) -> (0,1,0).
     const inside = try (s2.Point{ .x = 1, .y = 1, .z = 1 }).normalized();
     try testing.expect(try loop.containsPoint(inside));
     const outside = try (s2.Point{ .x = 1, .y = -1, .z = 1 }).normalized();
     try testing.expect(!try loop.containsPoint(outside));
 
-    // The vertices read back as points and as degrees.
     const v0 = try loop.vertex(0);
     try testing.expectApproxEqAbs(@as(f64, 1), v0.x, 1e-15);
     const v0_ll = try loop.vertexLatLng(0);
@@ -1353,8 +1001,6 @@ test "an octant triangle has exactly pi/2 steradians" {
     try testing.expectError(error.InvalidArgument, loop.vertex(3));
     try testing.expectError(error.InvalidArgument, loop.vertexLatLng(3));
 
-    // Inverting gives the complement, whose area is the rest of the sphere and
-    // which is no longer normalized; normalizing brings it back.
     try loop.invert();
     try testing.expectApproxEqRel(4 * std.math.pi - std.math.pi / 2.0, try loop.area(), 1e-12);
     try testing.expect(!try loop.isNormalized());
@@ -1365,7 +1011,6 @@ test "an octant triangle has exactly pi/2 steradians" {
     try testing.expectApproxEqRel(std.math.pi / 2.0, try loop.area(), 1e-12);
     try testing.expect(try loop.containsPoint(inside));
 
-    // Calling normalize on an already-normalized loop changes nothing.
     try loop.normalize();
     try testing.expectApproxEqRel(std.math.pi / 2.0, try loop.area(), 1e-12);
 }
@@ -1389,8 +1034,7 @@ test "the empty and full loops are exact opposites" {
     try testing.expect(!try empty.containsPoint(point));
     try testing.expect(try full.containsPoint(point));
 
-    // Each has the single special vertex upstream defines
-    // (`src/s2/s2loop.h:84-87`, `:139-143`).
+    // Empty and full loops each have one special vertex (`src/s2/s2loop.h:84-87,139-143`).
     try testing.expectEqual(@as(usize, 1), try empty.numVertices());
     try testing.expectEqual(@as(usize, 1), try full.numVertices());
     try testing.expect(try empty.isValid());
@@ -1399,9 +1043,7 @@ test "the empty and full loops are exact opposites" {
 
 test "a loop with a repeated vertex is constructible but invalid" {
     nativeReady();
-    // Upstream fixes the vertex set first and answers validity questions
-    // afterwards (`src/s2/s2loop.cc:201-221`), so a bad loop is a loop that
-    // reports itself invalid rather than a construction that fails.
+    // Upstream constructs the vertex chain before checking loop validity (`src/s2/s2loop.cc:201-221`).
     var loop = try s2.Loop.init(&[_][3]f64{
         .{ 1, 0, 0 },
         .{ 1, 0, 0 },
@@ -1421,22 +1063,8 @@ test "a loop with a repeated vertex is constructible but invalid" {
 
 test "a vertex that is not a direction is refused rather than built" {
     nativeReady();
-    // The octant through the positive axes again, with one component doubled.
-    // The triple still looks like a point and is still finite, but its squared
-    // norm is 4 rather than 1, and that is the one thing about it upstream
-    // cannot be asked about: `S2Loop::Init` computes the loop's origin through
-    // `InitOriginAndBound` (`src/s2/s2loop.cc:201-207`, `:271`) and the exact
-    // predicate reached from there triages its inputs with
-    // `ABSL_DCHECK_LE(a.Norm2(), 2)` (`src/s2/s2predicates.h:394`), which dies
-    // in every build that does not define `NDEBUG` -- Zig's Debug and
-    // ReleaseSafe among them.  Upstream's own validator says the same about the
-    // ordering: the unit-length check "happens too late in debug mode, because
-    // S2Loop construction calls s2pred::Sign which expects vertices to be unit
-    // length" (`src/s2/s2loop.cc:228-231`).
-    //
-    // So a vertex that is not a direction is not a loop to be reported invalid
-    // afterwards, it is an argument no one upstream can answer for, and each
-    // constructor that would hand one to `S2Loop::Init` says so instead.
+    // Non-unit vertices reach an upstream exact-predicate assumption (`src/s2/s2predicates.h:394`).
+    // Reject them before construction rather than relying on its debug-only check.
     const not_a_direction = [_][3]f64{
         .{ 2, 0, 0 },
         .{ 0, 1, 0 },
@@ -1446,14 +1074,6 @@ test "a vertex that is not a direction is refused rather than built" {
     try testing.expectError(error.InvalidArgument, s2.Polygon.init(&not_a_direction));
     try testing.expectError(error.InvalidArgument, s2.Polygon.initLoops(&not_a_direction, &.{3}));
 
-    // The zero vector and a non-finite component are the other two ways a
-    // triple is not a direction, and upstream's own predicate
-    // (`S2::IsUnitLength`, `src/s2/s2pointutil.cc:32-40`) rejects both for the
-    // same reason it rejects the one above: a squared norm of 0 is not 1, and
-    // the norm of an infinity is not a number at all.  A vertex that is a
-    // real direction however its components are written is a different thing
-    // again -- (1,0,0) is a perfectly good vertex, and (1/sqrt(3), ...) is the
-    // face corner the tests above use -- and still builds.
     try testing.expectError(error.InvalidArgument, s2.Loop.init(&[_][3]f64{
         .{ 0, 0, 0 },
         .{ 0, 1, 0 },
@@ -1477,25 +1097,8 @@ test "a vertex that is not a direction is refused rather than built" {
 
 test "a vertex count no native counter can hold is refused unvisited" {
     nativeReady();
-    // Upstream counts vertices and loops in `int`. `S2Loop::Init` assigns
-    // `vertices.size()` into `S2Loop::num_vertices_` (`src/s2/s2loop.cc:203`,
-    // `src/s2/s2loop.h:647`), `S2Polygon::InitLoopProperties` adds those
-    // per-loop counts up into `S2Polygon::num_vertices_`
-    // (`src/s2/s2polygon.cc:530`, `src/s2/s2polygon.h:887`), and
-    // `S2Polygon::num_loops()` narrows `loops_.size()` to an `int`
-    // (`src/s2/s2polygon.h:248`). A count a `size_t` holds and an `int` does
-    // not would arrive at all three already truncated, and narrowing is
-    // silent, so nothing downstream could tell the caller. It is an argument
-    // error instead, and the facade reports it as one.
-    //
-    // The array below is the octant through the positive axes -- the same
-    // three vertices the test above builds successfully -- and the counts are
-    // impossible ones. That is what makes the ordering observable: the bridge
-    // walks the caller's buffer as `xyz + 3 * i`, so a check that came after
-    // the walk would step off the end of a three-element array on its first
-    // vertex, and a check that came only after the allocation would first try
-    // to reserve `too_many` `S2Point`s for a call that cannot succeed. The
-    // status is asserted with a null handle: no owned object escapes refusal.
+    // Upstream stores loop/vertex counts as `int`; bridge inputs exceeding that range are refused before reads.
+    // Direct C calls assert invalid status and a null handle without allocating.
     const octant = [_][3]f64{
         .{ 1, 0, 0 },
         .{ 0, 1, 0 },
@@ -1503,8 +1106,6 @@ test "a vertex count no native counter can hold is refused unvisited" {
     };
     const octant_ref: *const [3][3]f64 = &octant;
 
-    // One past the largest `int`, which is one past every one of those native
-    // counters on a 32-bit and a 64-bit target alike.
     const too_many: usize = @as(usize, std.math.maxInt(c_int)) + 1;
     const invalid_argument: s2.c.S2BridgeStatus = s2.c.S2BRIDGE_INVALID_ARGUMENT;
 
@@ -1522,9 +1123,7 @@ test "a vertex count no native counter can hold is refused unvisited" {
     );
     try testing.expect(shell == null);
 
-    // The nested form has three counts that can each be impossible on their
-    // own, so each is exercised separately: the number of loops, one loop's
-    // length, and the sum of lengths that are each within range.
+    // Test each native count bound separately: loop count, per-loop length, and total length.
     const one_size = [_]usize{octant.len};
     var loops: ?*s2.c.S2BridgePolygon = null;
     try testing.expectEqual(
@@ -1551,11 +1150,7 @@ test "a vertex count no native counter can hold is refused unvisited" {
     );
     try testing.expect(huge == null);
 
-    // Two lengths that each fit an `int`, added together into one that does
-    // not: the per-loop check passes and the total is what upstream's `int`
-    // could not receive. On a 32-bit target the coordinate span binds before
-    // the `int` does and the same argument is refused a step earlier, which is
-    // the same answer for the same reason.
+    // Individually valid loop lengths may overflow their accumulated `int` total.
     const pair = [_]usize{ too_many / 2, too_many - too_many / 2 };
     var sum: ?*s2.c.S2BridgePolygon = null;
     try testing.expectEqual(
@@ -1569,13 +1164,7 @@ test "a vertex count no native counter can hold is refused unvisited" {
     );
     try testing.expect(sum == null);
 
-    // The caller's own buffer is the other half of the bound: a vertex is
-    // three doubles, so `3 * n` has to be addressable. `span_limit` is the
-    // largest count that is, and so is accepted; the first count past it is
-    // not, and is the one to ask about. On a 32-bit target that count still
-    // fits an `int`, so it separates the two bounds. On a 64-bit target the
-    // span limit is far above `INT_MAX`, the `int` bound has already been
-    // tested above, and there is nothing left here to separate.
+    // Each vertex is three doubles, so `3 * n` must fit the addressable span.
     const span_limit: usize = std.math.maxInt(usize) / (3 * @sizeOf(f64));
     if (span_limit < @as(usize, std.math.maxInt(c_int))) {
         var span: ?*s2.c.S2BridgeLoop = null;
@@ -1589,21 +1178,8 @@ test "a vertex count no native counter can hold is refused unvisited" {
 
 test "a vertex or loop index no native index can hold is refused" {
     nativeReady();
-    // `S2Loop::vertex(int i)` (`src/s2/s2loop.h:193`) and `S2Polygon::loop(int
-    // k)` (`src/s2/s2polygon.h:259`) take an `int`, while a caller of this
-    // facade holds a `usize` and can write down any value one. Narrowing a
-    // `maxInt(usize)` index is an "integer does not fit" panic in every mode
-    // that checks the conversion, and a different index, silently, in the mode
-    // that does not. So a public index past the largest `int` is
-    // `InvalidArgument`, decided before the bridge is called at all.
-    //
-    // The handles below are real and were built through the public facade: the
-    // octant through the positive axes, three genuine vertices. Only the index
-    // is absurd. Both impossible values are tried because they are different
-    // mistakes: one past the largest `int` is a value a caller could have got
-    // from a count it never truncated, and `maxInt(usize)` is one no count
-    // could have produced and which still has to be refused rather than
-    // narrowed.
+    // Upstream indices are `int`; larger `usize` values must be refused, not narrowed.
+    // These checks use real handles to isolate the invalid indices (`s2/s2loop.h:193`; `s2/s2polygon.h:259`).
     const octant = [_][3]f64{
         .{ 1, 0, 0 },
         .{ 0, 1, 0 },
@@ -1617,14 +1193,11 @@ test "a vertex or loop index no native index can hold is refused" {
     const one_past: usize = @as(usize, std.math.maxInt(c_int)) + 1;
     const beyond: usize = std.math.maxInt(usize);
 
-    // The vertex index, in the role it has on a loop.
     try testing.expectError(error.InvalidArgument, loop.vertex(one_past));
     try testing.expectError(error.InvalidArgument, loop.vertex(beyond));
     try testing.expectError(error.InvalidArgument, loop.vertexLatLng(one_past));
     try testing.expectError(error.InvalidArgument, loop.vertexLatLng(beyond));
 
-    // The loop index, and the vertex index of one loop, which are two
-    // different narrowing points on one call.
     try testing.expectError(error.InvalidArgument, poly.loopNumVertices(one_past));
     try testing.expectError(error.InvalidArgument, poly.loopNumVertices(beyond));
     try testing.expectError(error.InvalidArgument, poly.loopVertex(one_past, 0));
@@ -1634,40 +1207,16 @@ test "a vertex or loop index no native index can hold is refused" {
     try testing.expectError(error.InvalidArgument, poly.loopVertexLatLng(0, one_past));
     try testing.expectError(error.InvalidArgument, poly.loopVertexLatLng(beyond, beyond));
 
-    // The same handles still answer indices they can hold, which is what
-    // makes the refusals above a fact about the index and not about handles
-    // that reject everything. The octant's first vertex is (1, 0, 0) and its
-    // single loop has those same three vertices.
     try testing.expectEqual(@as(usize, 3), try loop.numVertices());
     try testing.expectEqual(@as(f64, 1.0), (try loop.vertex(0)).x);
     try testing.expectEqual(@as(usize, 3), try poly.loopNumVertices(0));
     try testing.expectEqual(@as(usize, 3), try poly.numVertices());
 }
 
-// ---------------------------------------------------------------------------
-// Polygon
-// ---------------------------------------------------------------------------
-
 test "a quadrilateral has twice the area of the triangle that halves it" {
     nativeReady();
-    // The cube face on +x is the square through (1,-1,-1), (1,1,-1),
-    // (1,1,1) and (1,-1,1), each divided by sqrt(3).  Those four corners
-    // run counter-clockwise seen from outside the face, which is the winding
-    // a shell has to have: `(b-a) x (c-b)` for a -> b -> c comes out along
-    // +x.  The six cube faces projected onto the unit sphere are a sixth of
-    // it each (`src/s2/s2coords.h:21-23`, and `S2::kAvgArea` is that closed
-    // form, `src/s2/s2metrics.cc:114-115`), so the square is 4*pi/6
-    // steradians and its diagonal from the first corner to the third splits
-    // it into two congruent triangles of pi/3 each.
-    //
-    // The rectangle of longitudes this used to build, (1,0,0), (0,1,0),
-    // (-1,0,0), (0,-1,0), has its first and third vertices antipodal, and
-    // an edge joining an antipodal pair is one of the degenerate loops
-    // `S2Loop::IsValid` rejects (`src/s2/s2loop.cc`), so it could not be
-    // asked this question at all.  Nothing here is weakened by the change:
-    // the square has four real edges, no two of them antipodal, and its two
-    // halves are two different triangles rather than one triangle and its
-    // mirror image.
+    // A cube-face square has area 4*pi/6, and its diagonal halves it (`src/s2/s2metrics.cc:114-115`).
+    // Use non-antipodal corners so the loop remains valid.
     const corner = 1.0 / @sqrt(@as(f64, 3));
     var quad = try s2.Polygon.init(&[_][3]f64{
         .{ corner, -corner, -corner },
@@ -1699,9 +1248,6 @@ test "a quadrilateral has twice the area of the triangle that halves it" {
     try testing.expectEqual(@as(usize, 4), try quad.loopNumVertices(0));
     try testing.expectEqual(@as(usize, 3), try first_half.loopNumVertices(0));
 
-    // Each half is half of the square twice over: once because a diagonal
-    // splits a square into congruent pieces, and once because the square is
-    // a cube face, which the six of them tile to 4*pi.
     const face_area: f64 = 4.0 * std.math.pi / 6.0;
     try testing.expectApproxEqRel(face_area, try quad.area(), 1e-9);
     try testing.expectApproxEqRel(face_area / 2, try first_half.area(), 1e-9);
@@ -1713,9 +1259,6 @@ test "a quadrilateral has twice the area of the triangle that halves it" {
     try testing.expectApproxEqAbs(corner, first.x, 1e-15);
     try testing.expectApproxEqAbs(-corner, first.y, 1e-15);
     try testing.expectApproxEqAbs(-corner, first.z, 1e-15);
-    // That vertex is the cube corner (1,-1,-1)/sqrt(3), so its latitude is
-    // the arcsine of its z coordinate and its longitude the arc tangent of
-    // two equal coordinates in the fourth quadrant.
     const first_ll = try quad.loopVertexLatLng(0, 0);
     try testing.expectApproxEqAbs(
         -std.math.asin(corner) * (180.0 / std.math.pi),
@@ -1728,19 +1271,11 @@ test "a quadrilateral has twice the area of the triangle that halves it" {
     try testing.expectError(error.InvalidArgument, quad.loopNumVertices(1));
     try testing.expectError(error.InvalidArgument, quad.loopVertexLatLng(0, 9));
 
-    // The face centre is inside the square and the far side of the sphere is
-    // not.  The latitude/longitude spellings say the same: (0,0) is the
-    // centre of face 0, and (0, 180) is the centre of face 3, which is the
-    // far side of the sphere from it.
     try testing.expect(try quad.containsPoint(.{ .x = 1, .y = 0, .z = 0 }));
     try testing.expect(!try quad.containsPoint(.{ .x = -1, .y = 0, .z = 0 }));
     try testing.expect(try quad.containsLatLng(.{ .lat_deg = 0, .lng_deg = 0 }));
     try testing.expect(!try quad.containsLatLng(.{ .lat_deg = 0, .lng_deg = 180 }));
 
-    // A polygon requires the same unit-length direction a cap does
-    // (`src/s2/s2polygon.h:653`, `src/s2/s2polygon.cc:704-706`), so the same
-    // inputs are refused, and the latitude/longitude spelling is refused for
-    // the coordinate it cannot normalise.
     try testing.expectError(
         error.InvalidArgument,
         quad.containsPoint(.{ .x = 0, .y = 0, .z = 0 }),
@@ -1754,8 +1289,6 @@ test "a quadrilateral has twice the area of the triangle that halves it" {
         quad.containsLatLng(.{ .lat_deg = std.math.nan(f64), .lng_deg = 0 }),
     );
 
-    // The square is unchanged by (y,z) -> (-y,-z), so its centroid is the
-    // face centre, which is latitude and longitude zero.
     const centroid = try quad.centroidLatLng();
     try testing.expectApproxEqAbs(@as(f64, 0), centroid.lat_deg, 1e-9);
     try testing.expectApproxEqAbs(@as(f64, 0), centroid.lng_deg, 1e-9);
@@ -1775,12 +1308,6 @@ test "the empty and full polygons complement each other" {
     try testing.expectApproxEqAbs(@as(f64, 0), try empty.area(), 1e-15);
     try testing.expectApproxEqRel(4 * std.math.pi, try full.area(), 1e-12);
 
-    // The complement of the empty polygon covers the whole sphere and the
-    // complement of the full one covers nothing. The assertions are on area and
-    // containment rather than on `isFull`/`isEmpty`, because those are
-    // statements about how the boolean operation happens to represent the
-    // result (`src/s2/s2polygon.h:241-245`) and this is a statement about the
-    // region.
     var empty_complement = try empty.complement();
     defer empty_complement.deinit();
     try testing.expectApproxEqRel(4 * std.math.pi, try empty_complement.area(), 1e-12);
@@ -1795,34 +1322,8 @@ test "the empty and full polygons complement each other" {
 
 test "union and intersection of two overlapping wedges give pi/4 and 3pi/4" {
     nativeReady();
-    // Two spherical wedges of solid angle pi/2 each that genuinely overlap.
-    // The first is the octant through the positive axes, which covers azimuth
-    // 0 to 90 north of the equator; the second is that octant turned 45
-    // degrees about the +z axis, so it covers azimuth 45 to 135.  They share
-    // exactly the 45-degree-wide wedge between the meridians at 45 and 90.
-    //
-    // Both vertex lists run counter-clockwise seen from outside, which is what
-    // a shell has to be. `S2Polygon::Init` hands the loop it is given straight
-    // through (`src/s2/s2polygon.cc:406-414`) rather than normalizing it, and
-    // `S2::GetArea` turns a negative signed area into `area + 4*pi`
-    // (`src/s2/s2loop_measures.cc:51-55`), so a clockwise list would be
-    // measured as the whole sphere minus the triangle rather than the
-    // triangle.
-    //
-    // `sqrt(0.5)` is not exactly unit length in binary -- its square is
-    // 0.5000000000000001, so the rotated wedge's squared norm is
-    // 1.0000000000000002 -- which is inside the `5 * DBL_EPSILON` a direction
-    // has to satisfy (`S2::IsUnitLength`, `src/s2/s2pointutil.cc:32-40`).
-    //
-    // The four areas come from spherical excess, `sum of interior angles -
-    // (n - 2)*pi`, and not from a measurement:
-    //   * each wedge has three right angles: 3*pi/2 - pi = pi/2;
-    //   * the intersection is bounded by the equator, the meridian at 45 and
-    //     the meridian at 90, with interior angles pi/2, pi/2 and the pi/4
-    //     between the two meridians at the pole: 5*pi/4 - pi = pi/4;
-    //   * the union is bounded by the equator from azimuth 0 to 135 and by
-    //     the meridian at 135, with interior angles pi/2, pi/2 and the 3*pi/4
-    //     between the meridians at 0 and 135 at the pole: 7*pi/4 - pi = 3*pi/4.
+    // Spherical excess fixes areas at pi/2 per wedge, pi/4 intersection, and 3*pi/4 union.
+    // Shells are counter-clockwise; vertices satisfy unit-length tolerance (`src/s2/s2polygon.cc:406-414`; `s2/s2pointutil.cc:32-40`).
     const diagonal = @sqrt(0.5);
     var xy = try s2.Polygon.init(&[_][3]f64{
         .{ 1, 0, 0 },
@@ -1847,15 +1348,9 @@ test "union and intersection of two overlapping wedges give pi/4 and 3pi/4" {
     var either = try s2.Polygon.unite(xy, rotated);
     defer either.deinit();
 
-    // The two operations, against the areas derived above rather than against
-    // whatever the library happened to produce.
     try testing.expectApproxEqRel(std.math.pi / 4.0, try both.area(), 1e-9);
     try testing.expectApproxEqRel(3 * std.math.pi / 4.0, try either.area(), 1e-9);
 
-    // Points that decide the relationships, all strictly inside or outside so
-    // that no answer depends on where a boundary point is counted: azimuth 22.5
-    // is in the first wedge only, 112.5 in the second only, 67.5 in both, and
-    // the south pole in neither.
     const only_xy = try s2.LatLng.fromDegrees(45, 22.5).toPoint();
     const only_rotated = try s2.LatLng.fromDegrees(45, 112.5).toPoint();
     const in_both = try s2.LatLng.fromDegrees(45, 67.5).toPoint();
@@ -1881,15 +1376,11 @@ test "union and intersection of two overlapping wedges give pi/4 and 3pi/4" {
     try testing.expect(!try both.containsPoint(in_neither));
     try testing.expect(!try either.containsPoint(in_neither));
 
-    // Inclusion and exclusion as a supplement: |A| + |B| = |A union B| + |A
-    // intersect B| holds for every measure, so it holds here too.
     try testing.expectApproxEqRel(
         (try xy.area()) + (try rotated.area()),
         (try either.area()) + (try both.area()),
         1e-9,
     );
-    // The intersection is a proper subset of each, so it is smaller than
-    // either, and the union is larger than either and smaller than the sphere.
     try testing.expect((try both.area()) < (try xy.area()));
     try testing.expect((try both.area()) < (try rotated.area()));
     try testing.expect((try both.area()) > 0);
@@ -1897,19 +1388,13 @@ test "union and intersection of two overlapping wedges give pi/4 and 3pi/4" {
     try testing.expect((try either.area()) > (try rotated.area()));
     try testing.expect((try either.area()) < 4 * std.math.pi);
 
-    // The inputs are untouched by both operations.
     try testing.expectApproxEqRel(std.math.pi / 2.0, try xy.area(), 1e-12);
     try testing.expectApproxEqRel(std.math.pi / 2.0, try rotated.area(), 1e-12);
 }
 
 test "a boolean operation refuses an operand its own validator rejects" {
     nativeReady();
-    // The square on cube face 0 with its four corners in an order that makes a
-    // bow tie: (1,-1,-1), (1,1,1), (1,1,-1), (1,-1,1), each over sqrt(3).  The
-    // first edge is one diagonal of the square and the third is the other, so
-    // they cross at the face centre and the loop is not simple.  Every vertex
-    // is a unit-length direction, which is why this polygon is built at all:
-    // the crossing is topology, and topology is what `isValid` reports.
+    // This unit-vertex bow tie crosses at the face centre; `isValid` checks its topology.
     const corner = 1.0 / @sqrt(@as(f64, 3));
     var bowtie = try s2.Polygon.init(&[_][3]f64{
         .{ corner, -corner, -corner },
@@ -1920,20 +1405,7 @@ test "a boolean operation refuses an operand its own validator rejects" {
     defer bowtie.deinit();
     try testing.expect(!try bowtie.isValid());
 
-    // It is also not something a boolean operation can be asked about.
-    // Upstream's condition is explicit -- the `S2Error` overloads "should never
-    // return an error provided that both input polygons are valid"
-    // (`src/s2/s2polygon.h:385-388`) -- and the operation has no answer for
-    // one that is not: it reads both operands as shape indexes
-    // (`src/s2/s2polygon.cc:936-943`) and builds the result's loops stamped
-    // with the *result's* debug override
-    // (`src/s2/s2builderutil_s2polygon_layer.cc:99`), so a bad chain comes back
-    // as the fatal `ABSL_CHECK(IsValid())` of `S2Loop::InitIndex`
-    // (`src/s2/s2loop.cc:353-359`) rather than as a status.  The refusal is
-    // therefore made before the operation runs, and it is the same
-    // `InvalidArgument` any other rejected argument gets -- not a result, and
-    // not an `Internal` the caller would read as "upstream failed on valid
-    // input", which is what it never is.
+    // Boolean operations require valid inputs, so reject invalid operands first (`src/s2/s2polygon.h:385-388`).
     var wedge = try s2.Polygon.init(&[_][3]f64{
         .{ 1, 0, 0 },
         .{ 0, 1, 0 },
@@ -1947,12 +1419,6 @@ test "a boolean operation refuses an operand its own validator rejects" {
     try testing.expectError(error.InvalidArgument, s2.Polygon.intersection(bowtie, wedge));
     try testing.expectError(error.InvalidArgument, s2.Polygon.intersection(bowtie, bowtie));
 
-    // Every refusal left both operands exactly as it found them: the bow tie
-    // is still the invalid polygon it was, and the wedge is still the octant of
-    // pi/2 steradians that three right angles make it.  So what was refused is
-    // the operand and not the operation -- a valid pair is unioned and
-    // intersected successfully above, against areas derived from spherical
-    // excess rather than from whatever the library produced.
     try testing.expect(!try bowtie.isValid());
     try testing.expect(try wedge.isValid());
     try testing.expectApproxEqRel(std.math.pi / 2.0, try wedge.area(), 1e-12);
@@ -1960,11 +1426,7 @@ test "a boolean operation refuses an operand its own validator rejects" {
 
 test "a polygon with a hole subtracts the hole" {
     nativeReady();
-    // A cap-like quadrilateral around the north pole, and a smaller one inside
-    // it. Every vertex is a real latitude/longitude point converted to a
-    // direction, and the two loops are both counter-clockwise seen from the
-    // pole, so `InitNested` works out which is the shell and which is the hole
-    // from the nesting depth alone (`src/s2/s2polygon.h:184-189`).
+    // `InitNested` classifies shells and holes by nesting depth (`src/s2/s2polygon.h:184-189`).
     var shell: [4][3]f64 = undefined;
     var hole: [4][3]f64 = undefined;
     const longitudes = [_]f64{ 0, 90, 180, -90 };
@@ -1996,48 +1458,29 @@ test "a polygon with a hole subtracts the hole" {
     try testing.expectEqual(@as(usize, 4), try with_hole.loopNumVertices(0));
     try testing.expectEqual(@as(usize, 4), try with_hole.loopNumVertices(1));
 
-    // The hole is the smaller cap, so the difference is the shell minus it.
     const shell_area = try shell_only.area();
     const hole_area = try hole_only.area();
     try testing.expect(shell_area > hole_area);
     try testing.expectApproxEqRel(shell_area - hole_area, try with_hole.area(), 1e-9);
 
-    // The north pole is inside the hole, so it is outside the holed polygon,
-    // while it is inside the bare shell and inside the bare hole.
     const north = s2.Point{ .x = 0, .y = 0, .z = 1 };
     try testing.expect(try shell_only.containsPoint(north));
     try testing.expect(try hole_only.containsPoint(north));
     try testing.expect(!try with_hole.containsPoint(north));
 
-    // A point below the hole but inside the shell is in the holed polygon.
     const between = try s2.LatLng.fromDegrees(60, 0).toPoint();
     try testing.expect(try shell_only.containsPoint(between));
     try testing.expect(!try hole_only.containsPoint(between));
     try testing.expect(try with_hole.containsPoint(between));
 
-    // A length list that does not describe the vertex array is a caller error.
     try testing.expectError(error.InvalidArgument, s2.Polygon.initLoops(&combined, &.{ 4, 3 }));
     try testing.expectError(error.InvalidArgument, s2.Polygon.initLoops(&combined, &.{4}));
 }
 
 test "a length list that cannot be summed is refused, not overflowed" {
     nativeReady();
-    // `Polygon.initLoops` totals the caller's lengths so it can check the sum
-    // against the vertex array it was handed. The lengths are `usize`, and a
-    // caller can perfectly well name one near the end of that range without
-    // it being a vertex count the library could accept. Adding those wraps,
-    // so the sum is guarded and the argument is refused instead: an
-    // `InvalidArgument` a caller can handle, rather than a trap in Debug and
-    // ReleaseSafe and a silently wrong total in ReleaseFast.
-    //
-    // The vertices below are real -- the octant through the positive axes --
-    // and are never reached: the lengths are refused before the sum is
-    // compared with them, and before the bridge is called at all, so no handle
-    // is produced. The two cases differ in where the overflow would land, and
-    // both matter: the first element is itself the impossible length, and the
-    // second is a legal length that has already been added when the
-    // impossible one arrives, so the guard is tested against a non-zero
-    // running total.
+    // Loop lengths are `usize`; reject accumulated overflow before comparing with the vertex span.
+    // Invalid lengths must return `InvalidArgument` without producing a handle.
     const octant = [_][3]f64{
         .{ 1, 0, 0 },
         .{ 0, 1, 0 },
@@ -2053,18 +1496,9 @@ test "a length list that cannot be summed is refused, not overflowed" {
     );
 }
 
-// ---------------------------------------------------------------------------
-// Region covering
-// ---------------------------------------------------------------------------
-
 test "the coverer picks a published cell for a real Sydney coordinate" {
     nativeReady();
-    // See testdata/upstream_coverer_sydney.txt. The coordinates, the options and
-    // the 42 tokens are the ones src/s2/s2region_coverer_test.cc's
-    // JavaCcConsistency test publishes for a polyline through the two points.
-    // A cap of zero radius is a single point, so its covering at level 22 with
-    // no cell-count limit is the one level-22 cell containing that point, and
-    // that cell must be one of the published tokens.
+    // The fixture and its 42 expected tokens come from upstream's Sydney `JavaCcConsistency` test (`src/s2/s2region_coverer_test.cc:534-563`).
     const points = [_]s2.LatLng{
         .{ .lat_deg = -33.8663457, .lng_deg = 151.1960891 },
         .{ .lat_deg = -33.866094000000004, .lng_deg = 151.19517439999998 },
@@ -2102,13 +1536,11 @@ test "the coverer picks a published cell for a real Sydney coordinate" {
         }
         try testing.expect(found);
 
-        // The chosen cell really does contain the coordinate.
         try testing.expect(try s2.Cell.init(covering[0]).containsPoint(
             try point.toPoint(),
         ));
     }
 
-    // An empty buffer is refused and reports nothing as written.
     var empty_buf: [1]s2.CellId = undefined;
     try testing.expectError(
         error.BufferTooSmall,
@@ -2118,8 +1550,7 @@ test "the coverer picks a published cell for a real Sydney coordinate" {
 
 test "the covering of a cell is exactly that cell" {
     nativeReady();
-    // Upstream's own fixture, with max_cells set to 1
-    // (src/s2/s2region_coverer_test.cc:72-87).
+    // Upstream covering fixture with `max_cells = 1` (`src/s2/s2region_coverer_test.cc:72-87`).
     const cell = try s2.CellId.fromDebugString("2/033020001100");
     const coverer = s2.Coverer{ .max_cells = 1 };
 
@@ -2132,10 +1563,7 @@ test "the covering of a cell is exactly that cell" {
 
 test "a covering obeys its options and actually covers its region" {
     nativeReady();
-    // Upstream states the contract for a covering: every level is within
-    // min_level..max_level and congruent to min_level modulo level_mod, and the
-    // union of the cells contains the region
-    // (src/s2/s2region_coverer.h:44-62, :113-160).
+    // Covering levels and containment follow the upstream contract (`src/s2/s2region_coverer.h:44-62,113-160`).
     const cap = s2.Cap{
         .center = .{ .lat_deg = 47.38, .lng_deg = 8.54 },
         .radius_deg = 0.5,
@@ -2153,9 +1581,7 @@ test "a covering obeys its options and actually covers its region" {
     try testing.expect(required <= buf.len);
     const covering = try coverer.coveringCap(cap, &buf);
     try testing.expectEqual(required, covering.len);
-    // This region does not touch six faces, so the requested bound holds; the
-    // documented exception is for a region that needs the six face cells
-    // (src/s2/s2region_coverer.h:78-84).
+    // `max_cells` may be exceeded when a region needs the six face cells (`src/s2/s2region_coverer.h:78-84`).
     try testing.expect(covering.len <= 8);
 
     const centre = try cap.center.toPoint();
@@ -2172,9 +1598,7 @@ test "a covering obeys its options and actually covers its region" {
     }
     try testing.expect(covered);
 
-    // Contradictory options are refused here even though upstream only
-    // debug-asserts them (`src/s2/s2region_coverer.cc:44-47`, `:60-83`), because
-    // a debug assert is gone in ReleaseFast.
+    // Validate options before upstream's debug-only checks (`src/s2/s2region_coverer.cc:44-47,60-83`).
     try testing.expectError(error.InvalidArgument, (s2.Coverer{
         .min_level = 10,
         .max_level = 4,
@@ -2184,15 +1608,11 @@ test "a covering obeys its options and actually covers its region" {
     try testing.expectError(error.InvalidArgument, (s2.Coverer{ .max_cells = 0 }).coveringCapCount(cap));
     try testing.expectError(error.InvalidArgument, (s2.Coverer{ .max_level = 31 }).coveringCapCount(cap));
 
-    // A max_cells wider than the int32_t the bridge carries
-    // (`zig/bridge.h:565`) is refused as an ordinary bad argument, so the
-    // conversion cannot trap the call in Debug or ReleaseSafe.
+    // `max_cells` must fit the bridge's `int32_t` parameter (`zig/bridge.h:565`).
     try testing.expectError(error.InvalidArgument, (s2.Coverer{
         .max_cells = @as(u32, @intCast(std.math.maxInt(c_int))) + 1,
     }).coveringCapCount(cap));
 
-    // A cap that is not finite has no covering and is refused before any
-    // coverer runs.
     try testing.expectError(
         error.InvalidArgument,
         coverer.coveringCapCount(.{
@@ -2224,7 +1644,6 @@ test "coverings of a rectangle and of a polygon cover a point inside them" {
     try testing.expectEqual(try coverer.coveringPolygonCount(poly), poly_covering.len);
     try testing.expect(poly_covering.len > 0);
 
-    // A point in both regions must be inside at least one cell of each covering.
     const inside = try (s2.Point{ .x = 1, .y = 1, .z = 1 }).normalized();
     try testing.expect(try poly.containsPoint(inside));
     try testing.expect(try rect.containsLatLng(try inside.toLatLng()));
@@ -2241,32 +1660,20 @@ test "coverings of a rectangle and of a polygon cover a point inside them" {
     }
     try testing.expect(rect_covered);
 
-    // The point is the centre of the octant, so it is also inside the polygon
-    // as an S2LatLng, which is the region query rather than the point query.
     try testing.expect(try poly.containsLatLng(.{ .lat_deg = 35.264389, .lng_deg = 45 }));
 }
 
-// ---------------------------------------------------------------------------
-// Units and identities that must not drift
-// ---------------------------------------------------------------------------
-
 test "every unit in the facade is the one its name says" {
     nativeReady();
-    // A quarter turn is pi/2 radians, which is 90 degrees. Reading one as the
-    // other would be off by a factor of 57.3. The radian constructor is the
-    // one that has to do a conversion here; the degree constructor only names
-    // the unit its fields already carry.
     try testing.expectApproxEqAbs(
         @as(f64, 90),
         s2.LatLng.fromRadians(std.math.pi / 2.0, 0).lat_deg,
         1e-12,
     );
 
-    // A face cell is a sixth of the sphere in steradians.
     const face_area = try s2.Cell.init(try s2.CellId.fromFace(0)).exactArea();
     try testing.expectApproxEqRel((4 * std.math.pi) / 6.0, face_area, 1e-12);
 
-    // The octant's perimeter is pi/2 radians per edge, i.e. 270 degrees total.
     var loop = try s2.Loop.init(&[_][3]f64{
         .{ 1, 0, 0 },
         .{ 0, 1, 0 },
@@ -2280,10 +1687,7 @@ test "every unit in the facade is the one its name says" {
 
 test "a cell can be rebuilt from its own face, position and level" {
     nativeReady();
-    // `S2CellId::FromFacePosLevel` is upstream's inverse of `face()`, `pos()`
-    // and `level()` taken together (`src/s2/s2cell_id.h:543-550`), so applying
-    // it to a cell's own three accessors returns the cell. That is an identity
-    // about the accessors, not a copy of anything.
+    // `FromFacePosLevel` inverts `face`, `pos`, and `level` (`src/s2/s2cell_id.h:543-550`).
     const ids = [_][]const u8{ "89c25", "1", "3fec", "6b12ae36313d", "5/31200" };
     for (ids) |text| {
         const cell = if (std.mem.startsWith(u8, text, "5/"))
@@ -2298,13 +1702,11 @@ test "a cell can be rebuilt from its own face, position and level" {
         );
         try testing.expectEqual(cell.raw, rebuilt.raw);
 
-        // The debug string is the library's third spelling of the same cell.
         var buf: [text_buf_len]u8 = undefined;
         const debug = try cell.toDebugString(&buf);
         try testing.expectEqual(cell.raw, (try s2.CellId.fromDebugString(debug)).raw);
     }
-    // Upstream publishes "5/31200" as the debug string of 0xbb04000000000000
-    // (src/s2/s2cell_id_test.cc:800-803 and golang/geo's TestCellIDString).
+    // Published debug spelling `5/31200` (`src/s2/s2cell_id_test.cc:800-803`; golang/geo `TestCellIDString`).
     var buf: [text_buf_len]u8 = undefined;
     const published = s2.CellId{ .raw = 0xbb04000000000000 };
     try testing.expectEqualStrings("5/31200", try published.toDebugString(&buf));
@@ -2319,19 +1721,8 @@ test "a cell can be rebuilt from its own face, position and level" {
 
 test "a cell named by its face, i and j matches the published corner neighbours" {
     nativeReady();
-    // `S2CellId::FromFaceIJ` returns the leaf cell whose centre sits at (i, j)
-    // on `face`, both in 0 .. 2^30 - 1 (`s2/s2cell_id.h:482-484`, with
-    // `kMaxSize = 1 << kMaxLevel`, `s2/s2cell_id.h:102`). Upstream's own
-    // TEST(S2CellId, Neighbors) states the four edge neighbours of the corner
-    // cell `FromFaceIJ(1, 0, 0).parent(level)` as four more FromFaceIJ cells,
-    // under the comment "These neighbors were determined manually using the
-    // face and axis relationships defined in s2coords.cc"
-    // (src/s2/s2cell_id_test.cc:584-596). That is a published answer about what
-    // an (i, j) pair names, and `edgeNeighbors` reaches it from the other
-    // direction: it decodes the id back to (face, i, j) and then applies the
-    // cube's face-and-axis adjacency (`src/s2/s2cell_id.cc:499-512`), so a
-    // wrong (i, j) -> id encoding cannot satisfy it. The pair also reaches both
-    // ends of the documented i and j range.
+    // Upstream manually publishes edge neighbors across cube faces (`src/s2/s2cell_id_test.cc:584-596`; `src/s2/s2cell_id.cc:499-512`).
+    // These indices cover both ends of the 0..2^30-1 range.
     const kMaxIJ: u32 = (@as(u32, 1) << s2.max_level) - 1;
     for (@as(u8, 1)..s2.max_level + 1) |level| {
         const size_ij: u32 = @as(u32, 1) << @intCast(s2.max_level - level);
@@ -2351,19 +1742,13 @@ test "a cell named by its face, i and j matches the published corner neighbours"
         }
     }
 
-    // (0, 0) on face 0 is the face-0 corner leaf, which the fixture row
-    // `cornervertex 0 0 30 0,4,5` already names by its Hilbert position
-    // instead: `S2CellId::FromFacePosLevel(0, 0, kMaxLevel)`, described at
-    // src/s2/s2cell_id_test.cc:610-611 as "the corner of faces 0, 4, and 5".
-    // Two independent spellings must be one cell.
+    // Upstream identifies the face-0 corner across faces 0, 4, and 5 (`src/s2/s2cell_id_test.cc:610-611`).
     try testing.expectEqual(
         (try s2.CellId.fromFacePosLevel(0, 0, s2.max_level)).raw,
         (try s2.CellId.fromFaceIJ(0, 0, 0)).raw,
     );
 
-    // The documented range is 0 .. 2^30 - 1 inclusive, so one past either end
-    // is refused rather than wrapped, and a face is 0..5 here even though
-    // `fromFace` also names the invalid faces 6 and 7.
+    // Valid grid indices are 0..2^30-1 and face indices are 0..5 (`src/s2/s2cell_id.h:482-484`).
     try testing.expectError(error.InvalidArgument, s2.CellId.fromFaceIJ(0, kMaxIJ + 1, 0));
     try testing.expectError(error.InvalidArgument, s2.CellId.fromFaceIJ(0, 0, kMaxIJ + 1));
     try testing.expectError(error.InvalidArgument, s2.CellId.fromFaceIJ(6, 0, 0));

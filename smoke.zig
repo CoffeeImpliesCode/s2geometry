@@ -1,42 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! A runnable, deterministic demonstration of the S2 facade.
-//!
-//! `zig build smoke` runs this. There is no input to supply, no clock, no
-//! random seed and no host dependency, so the same lines come out every time.
-//!
-//! Every printed number is an expected answer rather than a value this program
-//! produced and then described as correct. The cell ids, tokens and neighbour
-//! sets are the ones google/s2geometry and golang/geo publish for those inputs,
-//! named at each use; the areas are exact values of spherical geometry, printed
-//! with enough digits to see the identity hold. A mismatch prints both sides and
-//! exits non-zero, so this is a check and not a demo.
-//!
-//! This file is a separate root from `tests.zig` on purpose: it compiles the
-//! facade the way an ordinary program would, through the published module only,
-//! and it is the cheapest thing that proves the C++ archive, the translated
-//! bridge and the facade agree at link time.
-//!
-//! ## The two configurations
-//!
-//! In the default linked build nothing below changes and nothing is read from
-//! the environment or the command line. In a runtime-loading build (`-Druntime=true`)
-//! the native bridge is not linked, so every call below goes through a table
-//! that one explicit `load` fills, and the provider is named on the command
-//! line (`--provider <path>`) or in `S2GEOMETRY_TEST_PROVIDER`. Nothing is
-//! loaded by default and no other file is tried: a run with neither is an
-//! error that says so, not a silent fall back to the bundled linkage.
+//! Deterministic executable checks of the S2 facade against published values.
+//! Runtime-loaded builds require an explicit provider via `--provider` or the environment.
 
 const std = @import("std");
 const s2 = @import("s2geometry");
 
-/// Bytes of standard output buffering. Small enough to exercise the writer, big
-/// enough that a line never straddles two flushes in practice.
+/// Output buffer capacity for the smoke report.
 const out_buffer_len = 4096;
 
-/// Failures that mean the library disagrees with a published answer. They are
-/// errors rather than assertions so the mismatch prints next to the value it
-/// contradicts, and the process exits non-zero.
+/// Mismatches that make the smoke program exit with an error.
 const SmokeError = error{
     TokenMismatch,
     IdMismatch,
@@ -45,22 +18,14 @@ const SmokeError = error{
     ContainmentMismatch,
 };
 
-/// The environment variable that names the provider in a runtime-loading
-/// build, when the command line does not.
+/// Environment variable naming the runtime provider when no path is passed.
 const provider_variable = "S2GEOMETRY_TEST_PROVIDER";
 
-/// A runtime-loading build has no provider until one is named.
+/// Missing explicit provider in runtime-loaded mode.
 const ConfigurationError = error{NoProviderConfigured};
 
-/// The provider this run should load, from `--provider <path>` or from
-/// `S2GEOMETRY_TEST_PROVIDER`.
-///
-/// Both are explicit. Nothing here looks in a default location, and a build
-/// that was not told which file to load says so rather than loading something
-/// else. The named file has to be a shared build of this package's own bridge:
-/// every `s2br_*` symbol is defined in `zig/bridge.cc` here, so an installed
-/// upstream `libs2` exports none of them and the load refuses it with
-/// `MissingSymbol`.
+/// Selects the explicit `--provider` path or environment value.
+/// The file must export this package's `s2br_*` bridge symbols.
 fn providerRequest(init: std.process.Init) ConfigurationError![]const u8 {
     const args = init.minimal.args.toSlice(init.arena.allocator()) catch
         return noProvider();
@@ -75,8 +40,6 @@ fn providerRequest(init: std.process.Init) ConfigurationError![]const u8 {
         return noProvider();
 }
 
-/// Say which variable is missing. An error name on its own would send the next
-/// person into the loader instead of to the command line.
 fn noProvider() ConfigurationError {
     std.debug.print(
         "smoke.zig: this is a runtime-loading build. Pass --provider <path>, or " ++
@@ -97,10 +60,6 @@ pub fn main(init: std.process.Init) !void {
 
     try out.writeAll("s2geometry smoke\n");
 
-    // A runtime-loading build has no library until the one explicit load below
-    // succeeds; a linked build is usable already, and this branch is never
-    // analyzed there. Either way the configuration is printed, so a run says
-    // which of the two it was.
     if (comptime s2.runtime_loaded) {
         try s2.load(.{ .path = try providerRequest(init) });
         try out.print("loaded provider: {s}\n", .{s2.loadedSource().?.path});
@@ -119,10 +78,7 @@ pub fn main(init: std.process.Init) !void {
     try out.flush();
 }
 
-/// The six level-0 face cells. The id layout is `[face][face_pos]` with a
-/// one-bit level marker (`src/s2/s2cell_id.h:59-67`) and the token is that id in
-/// hex with trailing zeros removed (`src/s2/s2cell_id.cc:217-233`), so each face
-/// root is a single hex digit: 2*face + 1.
+/// Prints the six face-root ids and tokens from upstream's id layout (`src/s2/s2cell_id.h:59-67`).
 fn faceRoots(out: *std.Io.Writer) !void {
     try out.writeAll("\nface roots (level 0):\n");
     const expected = [_][]const u8{ "1", "3", "5", "7", "9", "b" };
@@ -135,9 +91,7 @@ fn faceRoots(out: *std.Io.Writer) !void {
     }
 }
 
-/// Two rows of the token table golang/geo publishes in
-/// `s2/cellid_test.go`'s TestCellIDTokensNominal, an independent implementation
-/// of the same codec.
+/// Prints published token/id pairs from golang/geo (`s2/cellid_test.go`, `TestCellIDTokensNominal`).
 fn publishedTokens(out: *std.Io.Writer) !void {
     try out.writeAll("\npublished token/id pairs (golang/geo TestCellIDTokensNominal):\n");
     const cases = [_]struct { token: []const u8, id: u64 }{
@@ -159,10 +113,7 @@ fn publishedTokens(out: *std.Io.Writer) !void {
     }
 }
 
-/// The projection origin. `src/python/s2geometry_test.py` calls the level-0 cell
-/// 0x1000000000000000 the face "centered at (0, 0)", and
-/// `src/s2/s2cell_id_test.cc`'s FaceDefinitions test requires the leaf cell of
-/// (0, 0) to be on face 0.
+/// Prints the origin-cell answers published by Python and C++ S2 tests.
 fn projectionOrigin(out: *std.Io.Writer) !void {
     const origin = s2.LatLng.fromDegrees(0, 0);
     const leaf = try s2.CellId.fromLatLng(origin);
@@ -181,22 +132,8 @@ fn projectionOrigin(out: *std.Io.Writer) !void {
     if ((try leaf.face()) != 0) return SmokeError.IdMismatch;
 }
 
-/// The neighbour fixtures `src/s2/s2cell_id_test.cc` publishes.
-///
-/// The edge neighbours of the face-1 cell are faces 5, 3, 2, 0 in that order
-/// (lines 571-581), because `GetEdgeNeighbors` documents its order as the one
-/// `S2Cell::GetEdge` defines (down, right, up, left) and the test indexes the
-/// array (`src/s2/s2cell_id.h:455-459`, `src/s2/s2cell_id.cc:499-511`).
-///
-/// The all-neighbours of `3/` are the face cells 1, 2, 2, 2, 4, 5, 5, 5
-/// (lines 648-663) and the all-neighbours of `2/033020001100`, the Zurich
-/// cell, are the eight cells listed at lines 665-678.  Both are compared
-/// upstream with `UnorderedElementsAre` against a list that repeats a value,
-/// and the header says why: "for cells adjacent to a face vertex, the same
-/// neighbor may be appended more than once" (`src/s2/s2cell_id.h:469-475`).
-/// So each of those two answers is a multiset -- the order the library emits
-/// them in is not part of the published answer, and each repeat is a separate
-/// occurrence upstream expects -- and both are compared here exactly that way.
+/// Prints published neighbor identities; corner results are multisets with duplicates (`src/s2/s2cell_id.h:455-475`).
+/// Edge-neighbor order follows down, right, up, left (`src/s2/s2cell_id.cc:499-511`).
 fn neighborIdentities(out: *std.Io.Writer) !void {
     try out.writeAll("\nneighbours (google/s2geometry fixtures):\n");
 
@@ -220,9 +157,7 @@ fn neighborIdentities(out: *std.Io.Writer) !void {
             .{ try neighbor.toDebugString(&buf), if (i + 1 == top_neighbors.len) "\n" else ", " },
         );
     }
-    // The published eight cells, with the repeats the fixture publishes: three
-    // of them are face 2 and three are face 5, because a neighbour that meets
-    // this cell at a face vertex is appended once per edge that reaches it.
+    // Keep the duplicate corner neighbors in upstream's published fixture.
     const expected_top = [_][]const u8{ "1/", "2/", "2/", "2/", "4/", "5/", "5/", "5/" };
     var expected_top_ids: [expected_top.len]s2.CellId = undefined;
     for (expected_top, 0..) |text, i| expected_top_ids[i] = try s2.CellId.fromDebugString(text);
@@ -240,8 +175,6 @@ fn neighborIdentities(out: *std.Io.Writer) !void {
     for (expected_zurich, 0..) |text, i| expected_zurich_ids[i] = try s2.CellId.fromDebugString(text);
     if (!sameCellsMultiset(zurich_neighbors, &expected_zurich_ids)) return SmokeError.NeighborMismatch;
     try out.writeAll("  all neighbours of the Zurich cell 2/033020001100:\n");
-    // Printed in the published order, each occurrence on its own line, then
-    // compared as a multiset so the order the library produced does not matter.
     for (expected_zurich) |text| {
         const want = try s2.CellId.fromDebugString(text);
         var buf: [64]u8 = undefined;
@@ -253,10 +186,7 @@ fn neighborIdentities(out: *std.Io.Writer) !void {
     }
 }
 
-/// Whether `got` holds the same cells as `want` with the same number of
-/// occurrences of each.  `UnorderedElementsAre` matches duplicates as well as
-/// values, so a cell listed twice has to come back twice and two different
-/// orderings of the same list are the same answer.
+/// Compares cell multiplicities without relying on result order.
 fn sameCellsMultiset(got: []const s2.CellId, want: []const s2.CellId) bool {
     if (got.len != want.len) return false;
     for (want) |one| {
@@ -273,11 +203,7 @@ fn sameCellsMultiset(got: []const s2.CellId, want: []const s2.CellId) bool {
     return true;
 }
 
-/// The spherical triangle through the three positive axes is an octant of the
-/// unit sphere: three right angles, so by the spherical-excess formula its area
-/// is 3*(pi/2) - pi = pi/2 steradians, and its perimeter is three quarter
-/// great circles, 3*pi/2 radians. Upstream uses the same three points as its
-/// octant fixture (`src/s2/s2loop_measures_test.cc:238-241`).
+/// Prints the exact octant area and perimeter identities (`src/s2/s2loop_measures_test.cc:238-241`).
 fn octantArea(out: *std.Io.Writer) !void {
     const vertices = [_][3]f64{
         .{ 1, 0, 0 },
@@ -309,8 +235,6 @@ fn octantArea(out: *std.Io.Writer) !void {
         return SmokeError.ContainmentMismatch;
     }
 
-    // Eight octants tile the sphere: 8 * pi/2 = 4*pi, which the six face cells
-    // also fill. Two different decompositions of the same sphere must agree.
     var face_total: f64 = 0;
     for (0..6) |face| {
         face_total += try s2.Cell.init(try s2.CellId.fromFace(@intCast(face))).exactArea();
@@ -324,33 +248,8 @@ fn octantArea(out: *std.Io.Writer) !void {
     if (!approximatelyEqual(face_total, 4 * std.math.pi, 1e-12)) return SmokeError.AreaMismatch;
 }
 
-/// Boolean operations on two spherical wedges that genuinely overlap, with the
-/// areas derived from spherical excess rather than read off a run.
-///
-/// Wedge A is the octant through the positive axes: azimuth 0 to 90, north of
-/// the equator.  Wedge B is A turned 45 degrees about +z, so it covers azimuth
-/// 45 to 135.  The two therefore share exactly the 45-degree-wide wedge
-/// between the meridians at 45 and 90, and nothing else.
-///
-/// Both vertex lists run counter-clockwise seen from outside, which is what a
-/// shell has to be.  `S2Polygon::Init` hands over the loop it is given
-/// (`src/s2/s2polygon.cc:406-414`) instead of normalizing it, and
-/// `S2::GetArea` turns a negative signed area into `area + 4*pi`
-/// (`src/s2/s2loop_measures.cc:51-55`); a clockwise list would be measured as
-/// the whole sphere minus the triangle instead of the triangle.
-///
-/// The rotated wedge's equatorial vertices are `(a, a, 0)` and `(-a, a, 0)`
-/// with `a = sqrt(0.5)`, which is not exactly unit length in binary -- `a*a`
-/// is 0.5000000000000001, so the squared norm is 1.0000000000000002.  That is
-/// inside the `5 * DBL_EPSILON` a direction has to satisfy
-/// (`S2::IsUnitLength`, `src/s2/s2pointutil.cc:32-40`), and the azimuths they
-/// name are 45 and 135 degrees.
-///
-/// Spherical excess, `sum of interior angles - (n - 2)*pi`, gives all four
-/// areas: each wedge has three right angles, so 3*(pi/2) - pi = pi/2; the
-/// intersection has angles pi/2, pi/2 and the pi/4 between its two meridians
-/// at the pole, so 5*pi/4 - pi = pi/4; the union has angles pi/2, pi/2 and the
-/// 3*pi/4 between the meridians at 0 and 135, so 7*pi/4 - pi = 3*pi/4.
+/// Checks union/intersection areas for overlapping spherical wedges using spherical excess.
+/// Shells are counter-clockwise and inputs satisfy unit-length tolerance (`src/s2/s2polygon.cc:406-414`; `src/s2/s2pointutil.cc:32-40`).
 fn polygonBoolean(out: *std.Io.Writer) !void {
     const diagonal = @sqrt(0.5);
     var xy = try s2.Polygon.init(&[_][3]f64{
@@ -392,18 +291,11 @@ fn polygonBoolean(out: *std.Io.Writer) !void {
     if (!approximatelyEqual(combined_area, 3 * std.math.pi / 4.0, 1e-9)) {
         return SmokeError.AreaMismatch;
     }
-    // Inclusion and exclusion as a supplement: |A| + |B| = |A or B| + |A and B|
-    // holds for every measure, so it holds here as well.
     if (!approximatelyEqual(xy_area + rotated_area, combined_area + overlap_area, 1e-9)) {
         return SmokeError.AreaMismatch;
     }
-    // The overlap is a real, proper part of the first wedge rather than the
-    // whole of it or nothing at all.
     if (!(overlap_area > 0 and overlap_area < xy_area)) return SmokeError.AreaMismatch;
 
-    // Three points decide the relationships, each strictly inside or outside
-    // the wedges so that no answer turns on where a boundary point is
-    // counted: azimuth 22.5 is in A only, 112.5 in B only, 67.5 in both.
     const at_22_5 = try s2.LatLng.fromDegrees(45, 22.5).toPoint();
     const at_67_5 = try s2.LatLng.fromDegrees(45, 67.5).toPoint();
     const at_112_5 = try s2.LatLng.fromDegrees(45, 112.5).toPoint();
@@ -440,11 +332,8 @@ fn polygonBoolean(out: *std.Io.Writer) !void {
     }
 }
 
-/// A covering of a real coordinate. The two points and the 42 level-22 cells are
-/// the ones `src/s2/s2region_coverer_test.cc`'s JavaCcConsistency test publishes
-/// for a polyline through Sydney; a zero-radius cap is a single point, so its
-/// covering at level 22 with no cell-count limit is the one cell that contains
-/// it, and that cell must be in the published list.
+/// Checks a level-22 Sydney cell against upstream's `JavaCcConsistency` fixture (`src/s2/s2region_coverer_test.cc:534-563`).
+/// A zero-radius cap is one point, so its covering must contain that point.
 fn coveringASydneyPoint(out: *std.Io.Writer) !void {
     const sydney = s2.LatLng.fromDegrees(-33.8663457, 151.1960891);
     const published = [_][]const u8{
@@ -490,8 +379,7 @@ fn coveringASydneyPoint(out: *std.Io.Writer) !void {
     if (covering.len != 1) return SmokeError.NeighborMismatch;
 }
 
-/// A relative comparison with an absolute floor, so an exactly-zero expected
-/// value is compared as an absolute error rather than by a zero ratio.
+/// Uses an absolute tolerance floor when the expected value is zero.
 fn approximatelyEqual(a: f64, b: f64, tolerance: f64) bool {
     const difference = @abs(a - b);
     if (difference <= tolerance) return true;

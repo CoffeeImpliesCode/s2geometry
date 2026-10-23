@@ -1,73 +1,31 @@
 .{
     .name = .s2geometry,
-    // Upstream's own version record. `CMakeLists.txt` still says
-    // `project(s2-geometry VERSION 0.12.0)` inside the v0.14.0 tag; that line
-    // is stale and this fork does not change it. The tag is the version.
     .version = "0.14.0",
     .minimum_zig_version = "0.16.0",
 
-    // Identifies this package. It belongs to this manifest only and must not
-    // be copied from another package.
     .fingerprint = 0x0e436f7bf16da9d8,
 
-    // Abseil LTS 20250814.1 is vendored at `vendor/abseil-cpp`, the version
-    // s2geometry's own CMake fetches. Nothing is fetched at build time, so
-    // there is no dependency to declare.
     .dependencies = .{},
 
     .paths = .{
         "build.zig",
         "build.zig.zon",
-        // This fork's `cross-test` profile: the build step and the two build
-        // defaults the published 53-platform matrix is run with.  It is
-        // discovered from the package root, so a dependent that materialises
-        // this package can run the same matrix; it selects no target and
-        // names no machine.
         "cross-test.profile.sh",
-        // The build-support helpers `build.zig` imports by name.  The
-        // directory is named whole, so the ELF shared route's C++ runtime
-        // source (`build_support/cpp_runtime.zig`) and the pinned compiler's
-        // own MIT text that `installLicenceRecords` installs beside the other
-        // records (`build_support/zig-0.16-LICENSE.txt`, the one file in this
-        // directory `UPSTREAM.sha256` group J records) travel with the package.
-        // A materialised copy missing either would configure a shared build
-        // with no runtime source and fail to install a licence its binary
-        // needs.
         "build_support",
 
-        // The facade, the bridge this fork compiles in every mode, and the
-        // behavioural roots.
         "zig",
         "tests.zig",
         "smoke.zig",
-        // The runtime-loading route: `runtime/graph.zig` builds the generated
-        // dispatch that `-Druntime=true` selects instead of the translated
-        // header module, `runtime/library.zig` is this SDK's descriptor, and
-        // the driver-supplied core beside them is `runtime/{loader.zig,
-        // sync.c, sync.h, generate.zig}`.  The directory is named as a whole so
-        // the route travels with the package: a materialised copy that left it
-        // out would configure `-Druntime=true` to a graph it cannot build.
         "runtime",
         "testdata",
         "consumer/build.zig",
         "consumer/build.zig.zon",
         "consumer/src/main.zig",
 
-        // Upstream C++ sources and their headers.  These are upstream's bytes,
-        // not this fork's: the one modified file under `src` and the seven
-        // under `vendor` are bounded portability corrections, each disclosed
-        // with its pristine and current digest in UPSTREAM.sha256, and each
-        // carrying a prominent change notice.  See UPSTREAM.md,
-        // "Owner-authorised upstream portability changes".
         "src",
 
-        // The vendored Abseil tree, source of every Abseil object and of the
-        // installed `absl/` headers.
         "vendor",
 
-        // Upstream build definition, formatting configuration and licence
-        // records, carried so the tree can still be built and audited the way
-        // upstream describes.
         "CMakeLists.txt",
         "Config.cmake.in",
         ".clang-format",
@@ -77,57 +35,24 @@
         "LICENSE",
         "NOTICE",
         "README.md",
-        // This fork's README.  Upstream's own bytes were moved to
-        // `README.upstream.md` on 2026-10-04 when the fork README took this
-        // path, and `UPSTREAM.sha256` group E records *that* path with
-        // upstream's digest.  Shipping only this file would leave a fetched
-        // package with a pinned record it has no bytes for, and the
-        // `sha256sum -c UPSTREAM.sha256` integrity gate the records name would
-        // fail on a correctly fetched tree.
         "README.upstream.md",
 
-        // Upstream's own Python packaging.  `pyproject.toml` and `setup.py`
-        // are named in `UPSTREAM.sha256` alongside the rest of the pinned
-        // tree, so a package that shipped everything except them would carry
-        // a different upstream than the one this fork recorded, and the
-        // digest check would have nothing to check them against.
         "pyproject.toml",
         "setup.py",
 
-        // This fork's own records. A private repository removes no upstream
-        // licence obligation.
         "README.zig.md",
         "UPSTREAM.md",
-        // `build.zig`'s `licence_records` installs this one beside the other
-        // licence texts (`build.zig`, `FORK-LICENSE.md`), so it is a build
-        // input and not only a record: a materialised package without it fails
-        // `zig build` at configure time, before it can install anything.
         "FORK-LICENSE.md",
         "NOTICE.md",
         "CHANGELOG.md",
         "FORK-NOTES.md",
         "UPSTREAM.sha256",
 
-        // The advertised Nix and devenv entry points, so a fetched package
-        // carries the evaluation layer its own records describe rather than
-        // only the graph: `package.nix`'s static and shared derivations and
-        // their install guards, the flake, and the `sdk:*` tasks those records
-        // name.  `flake.nix` pins nixpkgs at revision
-        // `c7def046b9a883d46974757852106483d741586f` and `flake.lock` records
-        // that same revision together with its narHash
-        // (`sha256-6RSEDHIWQtesQKWSu5qRai8L2h4KgCgMEfJHstW99G4=`), so a
-        // materialised package evaluates against the input this tree resolves
-        // rather than resolving a fresh one.  `devenv.lock` is not named
-        // because this tree has no such file, and a named path that does not
-        // exist would make `zig fetch` hash a missing entry.
         "package.nix",
         "flake.nix",
         "flake.lock",
         "devenv.nix",
         "devenv.yaml",
         ".envrc",
-        // `.github/` is deliberately absent, as it is across this workspace:
-        // the workflow is repository CI rather than package content, and no
-        // step of the build graph or of the provenance gate reads it.
     },
 }
