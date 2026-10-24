@@ -177,7 +177,9 @@ pub fn build(b: *std.Build) void {
         addCheck(b, check_step, target, optimize, delivery, runtime_loaded, wasi_sysroot);
     } else {
         for (check_targets) |query| {
-            addCheck(b, check_step, b.resolveTargetQuery(query), optimize, delivery, runtime_loaded, wasi_sysroot);
+            const check_target = b.resolveTargetQuery(query);
+            if (delivery == .dynamic and !targetHasDynamicLinker(check_target)) continue;
+            addCheck(b, check_step, check_target, optimize, delivery, runtime_loaded, wasi_sysroot);
         }
     }
 
@@ -542,14 +544,6 @@ fn addCheck(
     wasi_sysroot: ?[]const u8,
 ) void {
     const target = wasi_provider.resolveTarget(b, raw_target);
-    // Fail only this matrix cell when the target has no dynamic linker.
-    if (linkage == .dynamic and !targetHasDynamicLinker(target)) {
-        step.dependOn(&b.addFail(b.fmt(
-            "s2geometry: check cannot deliver shared objects for {s}; no static substitution. Use -Dlinkage=static.",
-            .{@tagName(target.result.os.tag)},
-        )).step);
-        return;
-    }
     const built = addGraph(b, target, optimize, linkage, runtime_loaded, false, wasi_sysroot);
     step.dependOn(&addTests(b, target, optimize, built.module, built.provider, "s2-analyze").step);
     step.dependOn(&addSmoke(b, target, optimize, built.module, built.provider).step);
@@ -770,13 +764,18 @@ fn hostCanRunOnHost(b: *std.Build, target: std.Build.ResolvedTarget) bool {
         .link_mode = .dynamic,
         .link_libc = true,
     };
-    if (candidate.os.tag == host.os.tag) {
-        if (candidate.dynamic_linker.get()) |dynamic_linker| {
-            b.dependOnFileMetadata(b.graph.cwdRelativePath(dynamic_linker));
-        }
-    }
     return switch (std.zig.system.getExternalExecutor(b.graph.io, candidate, options)) {
-        .native, .rosetta => true,
+        .native, .rosetta => blk: {
+            if (candidate.dynamic_linker.get()) |dynamic_linker| {
+                b.dependOnFileMetadata(b.graph.cwdRelativePath(dynamic_linker));
+            }
+            break :blk true;
+        },
+        .bad_dl => blk: {
+            // A missing interpreter cannot be tracked as an existing file.
+            b.graph.poisonCache();
+            break :blk false;
+        },
         else => false,
     };
 }

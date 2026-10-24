@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! One visible libc++/libc++abi for the ELF shared S2 closure.
 //!
-//! Sources and configuration follow Zig 0.16.0 at
-//! 24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8, src/libs/libcxx.zig.
+//! Sources and configuration follow Zig 0.17.0, src/libs/libcxx.zig.
 //! Zig's normal static runtime is built with hidden exports. Reusing that
 //! archive across images cannot preserve std::locale facet identity. Compile
 //! the same shipped sources with their upstream shared-library annotations.
@@ -20,8 +19,9 @@ pub fn configureHeaders(b: *std.Build, module: *std.Build.Module, target: std.Bu
     module.addCMacro("_LIBCPP_HAS_THREADS", "1");
     module.addCMacro("_LIBCPP_HAS_MUSL_LIBC", if (target.result.abi.isMusl()) "1" else "0");
     module.addCMacro("_LIBCPP_HAS_VENDOR_AVAILABILITY_ANNOTATIONS", "0");
-    // compilerRtOptMode uses ReleaseFast for normal Debug/ReleaseSafe builds.
+    // Match the shared runtime's .fast policy (src/libs/libcxx.zig:addCxxArgs).
     module.addCMacro("_LIBCPP_HARDENING_MODE", "_LIBCPP_HARDENING_MODE_NONE");
+    module.addCMacro("_LIBCPP_ASSERTION_SEMANTIC_DEFAULT", "_LIBCPP_ASSERTION_SEMANTIC_IGNORE");
     for ([_][]const u8{
         "_LIBCPP_HAS_MONOTONIC_CLOCK",
         "_LIBCPP_HAS_TERMINAL",

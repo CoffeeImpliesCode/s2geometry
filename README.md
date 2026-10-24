@@ -81,4 +81,6 @@ cc $(pkg-config --cflags s2geometry) main.c $(pkg-config --libs s2geometry)
 | `-Dwasi-sysroot=<path>` | Supply the WASI SDK 34+ threads sysroot for `wasm32-wasi`. |
 | `--zig-lib-dir <dir>` | Select the patched standard-library copy with Zig's standard option. |
 
+Without `-Dtarget`, `zig build check` compiles the six-target matrix without running binaries. Dynamic checks omit targets without a dynamic linker.
+
 `README.zig.md` documents the facade API, ownership and error contracts.

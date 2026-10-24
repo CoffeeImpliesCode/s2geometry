@@ -1,5 +1,7 @@
 # Changelog
 
+- Fix cross-architecture Linux configuration by tracking interpreter metadata only for native/Rosetta consumer execution.
+- Fix Zig 0.17 ELF shared-runtime assertion configuration and omit static-only targets from dynamic checks.
 - Port to Zig 0.17.0.
 - Nested consumer builds forward toolchain and global-cache paths through the environment.
 - The consumer step installs targets that need optional emulators instead of running them.

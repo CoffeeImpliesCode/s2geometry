@@ -19,13 +19,13 @@
 - `build.zig` compiles those lists directly. It does not run upstream CMake or Bazel, or fetch source during a build.
 - The fork adds `zig/bridge.cc` and `zig/bridge.h` as a C bridge, with `zig/root.zig` as the typed facade. The translated C declarations and upstream headers remain available to consumers.
 - C++ sources use upstream flags. Windows adds `-D_USE_MATH_DEFINES`. Only the bridge uses upstream headers as system includes, so diagnostics in fork code remain active.
-- `zig build check` compiles the C++ libraries, bridge, facade, tests and example for six targets. It does not run the binaries.
-- `-Dlinkage=static` is the default. `-Dlinkage=dynamic` builds shared libraries with ABI versions. The ELF shared route also builds `libs2cpp.so.0.16.0` from the pinned compiler's libc++, libc++abi and libunwind.
+- `zig build check` compiles the C++ libraries, bridge, facade, tests and example for six targets. Dynamic checks omit targets without a dynamic linker. It does not run the binaries.
+- `-Dlinkage=static` is the default. `-Dlinkage=dynamic` builds shared libraries with ABI versions. The ELF shared route also builds `libs2cpp.so.0.16.0` from the pinned compiler's libc++, libc++abi and libunwind, using Zig 0.17's no-hardening and ignored-assertion configuration for the runtime and its headers.
 - The installed shared graph uses `$ORIGIN` on ELF and `@loader_path` on Darwin. It has no build-cache search path. Windows resolves DLL dependencies beside the DLL that names them.
 - `-Druntime=true` selects explicit provider loading through a process-lifetime dispatch table. It is independent of linkage and does not link native archives into the facade.
 - `-fsys=s2` keeps the fork bridge and links an installed `s2geometry` pkg-config package instead of compiling bundled S2 and Abseil. It does not inspect or supply that package's dependency closure.
 - `package.nix` supplies the static and shared variants for both `flake.nix` and `devenv.nix`. The development shell carries tools only.
-- The consumer step runs native/Rosetta targets; the Zig 0.17 configurer cannot read optional emulator flags, so it installs other cross-targets instead.
+- The consumer step runs native/Rosetta targets; the Zig 0.17 configurer cannot read optional emulator flags, so it installs other cross-targets instead. Only native/Rosetta execution registers target interpreter metadata as a host filesystem dependency.
 - Nested consumer installs use the outer build's install prefix, which Zig 0.17 exposes only as a make-time path.
 - `build_support/consumer.zig` forwards make-time paths through `ZIG_LIB_DIR` and `ZIG_GLOBAL_CACHE_DIR`; Zig 0.17 rejects their former `zig build` flags.
 
