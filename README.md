@@ -45,12 +45,10 @@ The WASI SDK provides documented `getpid` and signal emulation, not a host PID o
 
 ### Zig dependency
 
-Add a path dependency in `build.zig.zon`:
+Fetch the dependency into `build.zig.zon`:
 
-```zig
-.dependencies = .{
-    .s2geometry = .{ .path = "../s2geometry" },
-},
+```sh
+zig fetch --save git+https://github.com/CoffeeImpliesCode/s2geometry#v0.14.0
 ```
 
 Import the module in `build.zig`:
